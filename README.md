@@ -1,6 +1,6 @@
-# Damic Admin
+# DAMAC — Durrah Al Munawwara Admin Console
 
-React admin console for Damic (sibling of `dam-backend`).
+React admin console for Durrah Al Munawwara (sibling of `dam-backend`). Brand: **DAMAC**.
 
 Stack: Vite + React + TypeScript + Tailwind + shadcn/ui + TanStack Query/Table + assistant-ui + Socket.io client.
 

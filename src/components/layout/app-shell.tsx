@@ -23,9 +23,18 @@ export function AppShell() {
   return (
     <div className="flex h-svh overflow-hidden bg-background">
       <aside className="flex w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-        <div className="px-4 py-5">
-          <div className="text-lg font-semibold tracking-tight">Damic</div>
-          <p className="text-xs text-muted-foreground">Admin console</p>
+        <div className="flex items-center gap-3 px-4 py-5">
+          <img
+            src="/image.png"
+            alt="DAMAC"
+            className="mt-1 size-11 rounded-md object-contain object-center"
+          />
+          <div className="min-w-0">
+            <div className="text-lg font-semibold tracking-tight">DAMAC</div>
+            <p className="text-xs leading-snug text-muted-foreground">
+              Durrah Al Munawwara admin console
+            </p>
+          </div>
         </div>
         <Separator />
         <nav className="flex flex-1 flex-col gap-1 p-3">

@@ -22,7 +22,7 @@ type PushPayload = {
 
 self.addEventListener('push', (event) => {
   let payload: PushPayload = {
-    title: 'Damic Admin',
+    title: 'DAMAC',
     body: 'New activity',
     data: { url: '/quotes' },
   }
@@ -46,7 +46,7 @@ self.addEventListener('push', (event) => {
     (data.type === 'escalation' ? '/inbox' : '/quotes')
 
   event.waitUntil(
-    self.registration.showNotification(payload.title || 'Damic Admin', {
+    self.registration.showNotification(payload.title || 'DAMAC', {
       body: payload.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',

@@ -35,9 +35,16 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl">Damic Admin</CardTitle>
-          <CardDescription>Sign in to manage quotes and live chat.</CardDescription>
+        <CardHeader className="items-center text-center">
+          <img
+            src="/image.png"
+            alt="DAMAC"
+            className="mb-2 mt-1 size-20 rounded-xl object-contain object-center p-2"
+          />
+          <CardTitle className="text-2xl">DAMAC</CardTitle>
+          <CardDescription>
+            Durrah Al Munawwara admin console - sign in to manage quotes and live chat.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>

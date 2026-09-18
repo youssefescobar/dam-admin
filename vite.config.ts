@@ -17,11 +17,11 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectRegister: false,
-      includeAssets: ['favicon.svg', 'icons/*.png'],
+      includeAssets: ['favicon.ico', 'favicon-32.png', 'damac.png', 'image.png', 'damac.jpg', 'apple-touch-icon.png', 'icons/*.png', 'icons/*.ico'],
       manifest: {
-        name: 'Damic Admin',
-        short_name: 'Damic',
-        description: 'Durrah Al Munawwara admin console — quotes, inbox, AI',
+        name: 'DAMAC - Durrah Al Munawwara Admin Console',
+        short_name: 'DAMAC',
+        description: 'Durrah Al Munawwara admin console - quotes, inbox, knowledge base, AI',
         theme_color: '#f36b21',
         background_color: '#ffffff',
         display: 'standalone',
@@ -66,18 +66,33 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: {
-      '/auth': 'http://127.0.0.1:3000',
-      '/quotes': 'http://127.0.0.1:3000',
-      '/kb': 'http://127.0.0.1:3000',
-      '/chat': 'http://127.0.0.1:3000',
-      '/push': 'http://127.0.0.1:3000',
-      '/conversations': 'http://127.0.0.1:3000',
-      '/health': 'http://127.0.0.1:3000',
-      '/socket.io': {
-        target: 'http://127.0.0.1:3000',
-        ws: true,
-      },
-    },
+    proxy: (() => {
+      // SPA routes (/quotes, /kb, …) share paths with the API. On refresh the
+      // browser navigates with Accept: text/html — serve index.html instead of
+      // proxying, or the backend returns {"error":"Authentication required"}.
+      const apiTarget = 'http://127.0.0.1:3000'
+      const spaBypass = (req: { headers: { accept?: string } }) => {
+        if (req.headers.accept?.includes('text/html')) {
+          return '/index.html'
+        }
+      }
+      const apiProxy = {
+        target: apiTarget,
+        bypass: spaBypass,
+      }
+      return {
+        '/auth': apiProxy,
+        '/quotes': apiProxy,
+        '/kb': apiProxy,
+        '/chat': apiProxy,
+        '/push': apiProxy,
+        '/conversations': apiProxy,
+        '/health': apiProxy,
+        '/socket.io': {
+          target: apiTarget,
+          ws: true,
+        },
+      }
+    })(),
   },
 })

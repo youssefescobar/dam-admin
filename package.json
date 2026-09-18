@@ -1,7 +1,8 @@
 {
-  "name": "dam-admin",
+  "name": "damac-admin",
   "private": true,
   "version": "0.0.0",
+  "description": "DAMAC — Durrah Al Munawwara admin console",
   "type": "module",
   "scripts": {
     "dev": "vite",

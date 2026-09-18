@@ -295,7 +295,7 @@ export function AiPlaygroundPage() {
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">AI playground</h1>
           <p className="text-xs text-muted-foreground">
-            Guided buttons (no LLM) + free-text RAG via{' '}
+            DAMAC guided chat + free-text RAG via{' '}
             <code className="rounded bg-muted px-1 py-0.5">POST /chat/message</code>
           </p>
         </div>
