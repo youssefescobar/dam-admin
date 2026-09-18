@@ -212,7 +212,7 @@ export function QuotesPage() {
     <div className="flex flex-1 flex-col gap-4 overflow-auto p-4 sm:p-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Quotes</h1>
-        <p className="text-sm text-muted-foreground">Queue and lifecycle for transfer requests.</p>
+        <p className="text-sm text-muted-foreground">Transfer requests from customers.</p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">

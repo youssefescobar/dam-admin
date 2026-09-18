@@ -150,7 +150,7 @@ export function KbPage() {
             <div>
               <h1 className="text-xl font-semibold">Knowledge base</h1>
               <p className="text-xs text-muted-foreground">
-                Questions & answers embedded for the AI
+                Answers the assistant uses for customer questions
               </p>
             </div>
             <BookOpen className="size-5 text-muted-foreground" />
@@ -244,7 +244,7 @@ export function KbPage() {
                       ? new Date(selected.updatedAt).toLocaleString()
                       : '—'}
                     {selected.chunks?.length != null
-                      ? ` · ${selected.chunks.length} chunk(s)`
+                      ? ' · Indexed for search'
                       : null}
                   </p>
                 </div>
@@ -292,7 +292,7 @@ export function KbPage() {
           <DetailPanelSkeleton />
         ) : (
           <div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
-            Select an entry, create one, or import a CSV (`title,content`).
+            Select an entry, create one, or import a CSV with title and content columns.
           </div>
         )}
       </div>
@@ -307,7 +307,7 @@ export function KbPage() {
               {editor.mode === 'edit' ? 'Edit entry' : 'New entry'}
             </DialogTitle>
             <DialogDescription>
-              Title is used as the question/topic for retrieval. Content is the answer.
+              Title is the question or topic. Content is the answer customers should get.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -349,8 +349,8 @@ export function KbPage() {
           <DialogHeader>
             <DialogTitle>Import CSV</DialogTitle>
             <DialogDescription>
-              Expects columns <code>title,content</code> (or question,answer). Upsert matches
-              on title.
+              Use columns title and content (or question and answer). Matching titles are
+              updated; new titles are added.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -378,7 +378,7 @@ export function KbPage() {
               Delete all existing entries first (replace all)
             </label>
             <Textarea
-              className="min-h-48 font-mono text-xs"
+              className="min-h-48 font-mono text-base md:text-xs"
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}
               placeholder={'title,content\n"Hours","We open 9-5"'}
@@ -393,7 +393,7 @@ export function KbPage() {
               disabled={importMutation.isPending || !csvText.trim()}
               onClick={() => importMutation.mutate()}
             >
-              {importMutation.isPending ? 'Importing…' : 'Import & embed'}
+              {importMutation.isPending ? 'Importing…' : 'Import'}
             </Button>
           </DialogFooter>
         </DialogContent>

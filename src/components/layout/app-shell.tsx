@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Activity,
   BookOpen,
   Bot,
   Inbox,
@@ -27,7 +26,7 @@ const nav = [
   { to: '/quotes', label: 'Quotes', icon: Table2 },
   { to: '/inbox', label: 'Inbox', icon: Inbox, badgeKey: 'inbox' as const },
   { to: '/kb', label: 'Knowledge', icon: BookOpen },
-  { to: '/ai', label: 'AI', icon: Bot },
+  { to: '/ai', label: 'AI chat', icon: Bot },
 ]
 
 function BrandBlock({ compact = false }: { compact?: boolean }) {
@@ -98,15 +97,6 @@ function SidebarNav({
             ) : null}
           </NavLink>
         ))}
-        <a
-          href={`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000'}/health`}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/70"
-        >
-          <Activity className="size-4" />
-          API health
-        </a>
       </nav>
       <div className="space-y-2 border-t border-sidebar-border p-3">
         <div className="truncate px-2 text-xs text-muted-foreground">{admin?.email}</div>

@@ -169,7 +169,7 @@ function ConversationThread({
               <ComposerPrimitive.Root className="flex gap-2">
                 <ComposerPrimitive.Input
                   placeholder="Reply as admin…"
-                  className="flex-1 rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex-1 rounded-md border border-input bg-transparent px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
                 />
                 <ComposerPrimitive.Send asChild>
                   <Button type="button">Send</Button>

@@ -77,7 +77,6 @@ function createChatAdapter(
         })
 
         if (data.escalated) {
-          const reason = data.reason ? ` (${data.reason})` : ''
           const handoff =
             data.systemMessage ||
             "I'm connecting you with a team member who can help."
@@ -85,7 +84,7 @@ function createChatAdapter(
             content: [
               {
                 type: 'text',
-                text: `${handoff}\n\nEscalated to human queue${reason}.`,
+                text: `${handoff}\n\nA human agent has been notified.`,
               },
             ],
           }
@@ -168,11 +167,11 @@ function AiThread({
                 </div>
                 <div className="space-y-1">
                   <h2 className="text-lg font-semibold tracking-tight">
-                    Guided customer chat
+                    Customer chat preview
                   </h2>
                   <p className="max-w-sm text-sm text-muted-foreground">
-                    Tap a topic for instant answers (no AI). Or type a free question
-                    for RAG.
+                    Tap a topic for a quick answer, or type any question to try the
+                    assistant.
                   </p>
                 </div>
                 <div className="w-full max-w-lg text-left">
@@ -232,7 +231,7 @@ function AiThread({
               <ComposerPrimitive.Input
                 placeholder="Or type a free question…"
                 rows={1}
-                className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
+                className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-base outline-none placeholder:text-muted-foreground md:text-sm"
               />
               <ThreadPrimitive.If running={false}>
                 <ComposerPrimitive.Send asChild>
@@ -293,10 +292,9 @@ export function AiPlaygroundPage() {
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight">AI playground</h1>
+          <h1 className="text-xl font-semibold tracking-tight">AI chat</h1>
           <p className="text-xs text-muted-foreground">
-            DAMAC guided chat + free-text RAG via{' '}
-            <code className="rounded bg-muted px-1 py-0.5">POST /chat/message</code>
+            Preview how customers experience guided topics and free-text answers.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -309,8 +307,15 @@ export function AiPlaygroundPage() {
                   : 'bg-muted text-muted-foreground'
               )}
             >
-              {meta.status}
-              {meta.conversationId ? ` · ${meta.conversationId.slice(-6)}` : null}
+              {meta.escalated
+                ? 'Needs human'
+                : meta.status === 'ai_handling'
+                  ? 'AI handling'
+                  : meta.status === 'claimed'
+                    ? 'Claimed'
+                    : meta.status === 'closed'
+                      ? 'Closed'
+                      : meta.status}
             </span>
           )}
           <Button type="button" variant="outline" size="sm" onClick={reset}>
