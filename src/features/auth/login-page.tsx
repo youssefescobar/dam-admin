@@ -12,8 +12,8 @@ import { PwaInstallBanner } from '@/components/layout/pwa-install-banner'
 export function LoginPage() {
   const { login, token } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('admin@damic.local')
-  const [password, setPassword] = useState('changeme123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
   if (token) return <Navigate to="/quotes" replace />
@@ -57,6 +57,7 @@ export function LoginPage() {
                 id="email"
                 type="email"
                 autoComplete="username"
+                placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -68,6 +69,7 @@ export function LoginPage() {
                 id="password"
                 type="password"
                 autoComplete="current-password"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

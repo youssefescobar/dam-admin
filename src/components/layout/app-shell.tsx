@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, Navigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   Activity,
   BookOpen,
@@ -14,6 +15,8 @@ import {
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/features/auth/auth-context'
+import { api } from '@/lib/api'
+import type { Conversation } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { PushNotificationsToggle } from '@/components/layout/push-notifications-toggle'
@@ -22,19 +25,19 @@ import { cn } from '@/lib/utils'
 
 const nav = [
   { to: '/quotes', label: 'Quotes', icon: Table2 },
-  { to: '/inbox', label: 'Inbox', icon: Inbox },
+  { to: '/inbox', label: 'Inbox', icon: Inbox, badgeKey: 'inbox' as const },
   { to: '/kb', label: 'Knowledge', icon: BookOpen },
   { to: '/ai', label: 'AI', icon: Bot },
 ]
 
 function BrandBlock({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={cn('flex items-center gap-3', compact && 'gap-2')}>
+    <div className={cn('flex min-w-0 items-center gap-3', compact && 'gap-2')}>
       <img
         src="/image.png"
         alt="DAMAC"
         className={cn(
-          'rounded-md object-contain object-center',
+          'shrink-0 rounded-md object-contain object-center',
           compact ? 'mt-0.5 size-8' : 'mt-1 size-11'
         )}
       />
@@ -52,13 +55,28 @@ function BrandBlock({ compact = false }: { compact?: boolean }) {
   )
 }
 
-function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+function NavBadge({ count }: { count: number }) {
+  if (!count) return null
+  return (
+    <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+function SidebarNav({
+  onNavigate,
+  inboxCount,
+}: {
+  onNavigate?: () => void
+  inboxCount: number
+}) {
   const { admin, logout } = useAuth()
   const { theme, setTheme } = useTheme()
 
   return (
     <>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
         {nav.map((item) => (
           <NavLink
             key={item.to}
@@ -73,8 +91,11 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               )
             }
           >
-            <item.icon className="size-4" />
-            {item.label}
+            <item.icon className="size-4 shrink-0" />
+            <span className="truncate">{item.label}</span>
+            {'badgeKey' in item && item.badgeKey === 'inbox' ? (
+              <NavBadge count={inboxCount} />
+            ) : null}
           </NavLink>
         ))}
         <a
@@ -114,6 +135,15 @@ export function AppShell() {
   const { token } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
 
+  const inboxQuery = useQuery({
+    queryKey: ['conversations', 'needs_human'],
+    queryFn: () =>
+      api<{ conversations: Conversation[] }>('/conversations?status=needs_human'),
+    enabled: Boolean(token),
+    refetchInterval: 30_000,
+  })
+  const inboxCount = inboxQuery.data?.conversations.length ?? 0
+
   useEffect(() => {
     if (!menuOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -127,23 +157,23 @@ export function AppShell() {
 
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-background">
-      <PwaInstallBanner className="shrink-0 md:hidden" />
+      {/* Mobile chrome */}
+      <div className="flex shrink-0 flex-col md:hidden">
+        <header className="flex items-center justify-between gap-2 border-b px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+          <BrandBlock compact />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            {menuOpen ? <X /> : <Menu />}
+          </Button>
+        </header>
+        <PwaInstallBanner />
+      </div>
 
-      {/* Mobile top bar */}
-      <header className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2 md:hidden">
-        <BrandBlock compact />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          {menuOpen ? <X /> : <Menu />}
-        </Button>
-      </header>
-
-      {/* Mobile drawer */}
       {menuOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <button
@@ -153,7 +183,7 @@ export function AppShell() {
             onClick={() => setMenuOpen(false)}
           />
           <aside className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col bg-sidebar text-sidebar-foreground shadow-xl animate-fade-in">
-            <div className="flex items-center justify-between gap-2 px-4 py-4">
+            <div className="flex items-center justify-between gap-2 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
               <BrandBlock compact />
               <Button
                 type="button"
@@ -166,30 +196,31 @@ export function AppShell() {
               </Button>
             </div>
             <Separator />
-            <SidebarNav onNavigate={() => setMenuOpen(false)} />
+            <SidebarNav
+              inboxCount={inboxCount}
+              onNavigate={() => setMenuOpen(false)}
+            />
           </aside>
         </div>
       )}
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
           <div className="flex items-center gap-3 px-4 py-5">
             <BrandBlock />
           </div>
           <Separator />
-          <SidebarNav />
+          <SidebarNav inboxCount={inboxCount} />
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <PwaInstallBanner className="hidden shrink-0 md:flex" />
+          <PwaInstallBanner className="hidden md:flex" />
           <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:pb-0">
             <Outlet />
           </main>
         </div>
       </div>
 
-      {/* Mobile bottom tabs */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         {nav.map((item) => (
           <NavLink
@@ -197,12 +228,19 @@ export function AppShell() {
             to={item.to}
             className={({ isActive }) =>
               cn(
-                'flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium',
+                'relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium',
                 isActive ? 'text-primary' : 'text-muted-foreground'
               )
             }
           >
-            <item.icon className="size-5" />
+            <span className="relative">
+              <item.icon className="size-5" />
+              {'badgeKey' in item && item.badgeKey === 'inbox' && inboxCount > 0 ? (
+                <span className="absolute -right-2 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-4 text-primary-foreground">
+                  {inboxCount > 9 ? '9+' : inboxCount}
+                </span>
+              ) : null}
+            </span>
             {item.label}
           </NavLink>
         ))}
