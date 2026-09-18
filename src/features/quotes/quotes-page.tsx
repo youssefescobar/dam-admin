@@ -46,6 +46,8 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { MoreHorizontal } from 'lucide-react'
+import { QuotesTableSkeleton } from '@/components/loading/skeletons'
+import { cn } from '@/lib/utils'
 
 export function QuotesPage() {
   const queryClient = useQueryClient()
@@ -265,7 +267,12 @@ export function QuotesPage() {
         </Button>
       </div>
 
-      <div className="rounded-xl border bg-card">
+      <div
+        className={cn(
+          'rounded-xl border bg-card transition-opacity duration-200',
+          query.isFetching && !query.isLoading && 'opacity-60'
+        )}
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
@@ -282,14 +289,10 @@ export function QuotesPage() {
           </TableHeader>
           <TableBody>
             {query.isLoading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  Loading…
-                </TableCell>
-              </TableRow>
+              <QuotesTableSkeleton columns={columns.length} />
             ) : table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow key={row.id} className="animate-fade-in">
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

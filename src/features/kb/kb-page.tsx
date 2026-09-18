@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { DetailPanelSkeleton, ListPanelSkeleton } from '@/components/loading/skeletons'
 
 type EditorState = {
   open: boolean
@@ -185,25 +186,24 @@ export function KbPage() {
         </div>
         <ScrollArea className="flex-1">
           <div className="space-y-1 p-2">
-            {listQuery.isLoading && (
-              <p className="p-4 text-center text-sm text-muted-foreground">Loading…</p>
-            )}
-            {filtered.map((e) => (
-              <button
-                key={e._id}
-                type="button"
-                onClick={() => setSelectedId(e._id)}
-                className={cn(
-                  'w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors',
-                  selectedId === e._id ? 'border-primary bg-accent' : 'hover:bg-muted/60'
-                )}
-              >
-                <div className="font-medium line-clamp-2">{e.title}</div>
-                <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                  {e.content}
-                </div>
-              </button>
-            ))}
+            {listQuery.isLoading && <ListPanelSkeleton rows={7} />}
+            {!listQuery.isLoading &&
+              filtered.map((e) => (
+                <button
+                  key={e._id}
+                  type="button"
+                  onClick={() => setSelectedId(e._id)}
+                  className={cn(
+                    'animate-fade-in w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+                    selectedId === e._id ? 'border-primary bg-accent' : 'hover:bg-muted/60'
+                  )}
+                >
+                  <div className="font-medium line-clamp-2">{e.title}</div>
+                  <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                    {e.content}
+                  </div>
+                </button>
+              ))}
             {!listQuery.isLoading && !filtered.length && (
               <p className="p-4 text-center text-sm text-muted-foreground">No entries yet.</p>
             )}
@@ -261,11 +261,13 @@ export function KbPage() {
               </div>
             </div>
             <ScrollArea className="flex-1 p-6">
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+              <pre className="animate-fade-in whitespace-pre-wrap font-sans text-sm leading-relaxed">
                 {selected.content}
               </pre>
             </ScrollArea>
           </>
+        ) : listQuery.isLoading ? (
+          <DetailPanelSkeleton />
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
             Select an entry, create one, or import a CSV (`title,content`).

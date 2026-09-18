@@ -16,6 +16,7 @@ import type { ChatMessage, Conversation } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import { ListPanelSkeleton, ThreadSkeleton } from '@/components/loading/skeletons'
 
 function toThreadMessages(messages: ChatMessage[]): ThreadMessageLike[] {
   return messages
@@ -131,34 +132,36 @@ function ConversationThread({
       <div className="flex h-full flex-col">
         <ThreadPrimitive.Root className="flex h-full flex-col">
           <ThreadPrimitive.Viewport className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
-            {messagesQuery.isLoading && (
-              <p className="text-sm text-muted-foreground">Loading thread…</p>
+            {messagesQuery.isLoading && <ThreadSkeleton />}
+            {!messagesQuery.isLoading && (
+              <div className="animate-fade-in flex flex-1 flex-col gap-3">
+                <ThreadPrimitive.Messages
+                  components={{
+                    UserMessage: () => (
+                      <MessagePrimitive.Root className="flex justify-end">
+                        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground">
+                          <MessagePrimitive.Content />
+                        </div>
+                      </MessagePrimitive.Root>
+                    ),
+                    AssistantMessage: () => (
+                      <MessagePrimitive.Root className="flex justify-start">
+                        <div className="max-w-[80%] rounded-2xl rounded-bl-md border bg-card px-3 py-2 text-sm">
+                          <MessagePrimitive.Content />
+                        </div>
+                      </MessagePrimitive.Root>
+                    ),
+                    SystemMessage: () => (
+                      <MessagePrimitive.Root className="flex justify-center">
+                        <div className="max-w-[90%] rounded-lg bg-muted px-3 py-1.5 text-center text-xs text-muted-foreground">
+                          <MessagePrimitive.Content />
+                        </div>
+                      </MessagePrimitive.Root>
+                    ),
+                  }}
+                />
+              </div>
             )}
-            <ThreadPrimitive.Messages
-              components={{
-                UserMessage: () => (
-                  <MessagePrimitive.Root className="flex justify-end">
-                    <div className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground">
-                      <MessagePrimitive.Content />
-                    </div>
-                  </MessagePrimitive.Root>
-                ),
-                AssistantMessage: () => (
-                  <MessagePrimitive.Root className="flex justify-start">
-                    <div className="max-w-[80%] rounded-2xl rounded-bl-md border bg-card px-3 py-2 text-sm">
-                      <MessagePrimitive.Content />
-                    </div>
-                  </MessagePrimitive.Root>
-                ),
-                SystemMessage: () => (
-                  <MessagePrimitive.Root className="flex justify-center">
-                    <div className="max-w-[90%] rounded-lg bg-muted px-3 py-1.5 text-center text-xs text-muted-foreground">
-                      <MessagePrimitive.Content />
-                    </div>
-                  </MessagePrimitive.Root>
-                ),
-              }}
-            />
           </ThreadPrimitive.Viewport>
           <div className="border-t p-3">
             {canReply ? (
@@ -286,22 +289,24 @@ export function InboxPage() {
         </div>
         <ScrollArea className="flex-1">
           <div className="space-y-1 p-2">
-            {(listQuery.data?.conversations ?? []).map((c) => (
-              <button
-                key={c._id}
-                type="button"
-                onClick={() => setSelectedId(c._id)}
-                className={cn(
-                  'w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors',
-                  selectedId === c._id ? 'border-primary bg-accent' : 'hover:bg-muted/60'
-                )}
-              >
-                <div className="font-medium">{c.customer?.name || 'Guest'}</div>
-                <div className="truncate text-xs text-muted-foreground">
-                  {c.customer?.contact} · {c.status}
-                </div>
-              </button>
-            ))}
+            {listQuery.isLoading && <ListPanelSkeleton rows={6} />}
+            {!listQuery.isLoading &&
+              (listQuery.data?.conversations ?? []).map((c) => (
+                <button
+                  key={c._id}
+                  type="button"
+                  onClick={() => setSelectedId(c._id)}
+                  className={cn(
+                    'animate-fade-in w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors',
+                    selectedId === c._id ? 'border-primary bg-accent' : 'hover:bg-muted/60'
+                  )}
+                >
+                  <div className="font-medium">{c.customer?.name || 'Guest'}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {c.customer?.contact} · {c.status}
+                  </div>
+                </button>
+              ))}
             {!listQuery.isLoading && !(listQuery.data?.conversations.length) && (
               <p className="p-4 text-center text-sm text-muted-foreground">No conversations.</p>
             )}
