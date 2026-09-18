@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
@@ -15,6 +15,8 @@ import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
+type ChatOption = { id: string; label: string }
+
 type ChatReply = {
   conversationId: string
   status: string
@@ -22,19 +24,15 @@ type ChatReply = {
   answer: string | null
   reason: string | null
   systemMessage: string | null
+  options?: ChatOption[]
 }
 
 type SessionMeta = {
   conversationId: string | null
   status: string | null
   escalated: boolean
+  options: ChatOption[]
 }
-
-const SUGGESTIONS = [
-  { title: 'Airport transfer', prompt: 'How much is an airport transfer for a sedan?' },
-  { title: 'Hours', prompt: 'What are your operating hours?' },
-  { title: 'Human agent', prompt: 'I want to speak with a human agent.' },
-]
 
 function messageText(message: ThreadMessage): string {
   if (message.role !== 'user' && message.role !== 'assistant') return ''
@@ -54,7 +52,7 @@ function createChatAdapter(
       const lastUser = [...messages].reverse().find((m) => m.role === 'user')
       const text = lastUser ? messageText(lastUser) : ''
       if (!text) {
-        return { content: [{ type: 'text', text: 'Please send a message to test the AI.' }] }
+        return { content: [{ type: 'text', text: 'Please pick an option or send a message.' }] }
       }
 
       try {
@@ -75,6 +73,7 @@ function createChatAdapter(
           conversationId: data.conversationId,
           status: data.status,
           escalated: data.escalated,
+          options: data.options ?? [],
         })
 
         if (data.escalated) {
@@ -96,7 +95,7 @@ function createChatAdapter(
           content: [
             {
               type: 'text',
-              text: data.answer?.trim() || '(Empty AI response)',
+              text: data.answer?.trim() || '(Empty response)',
             },
           ],
         }
@@ -109,6 +108,12 @@ function createChatAdapter(
               ? err.message
               : 'Chat request failed'
         toast.error(message)
+        onMeta({
+          conversationId: conversationIdRef.current,
+          status: null,
+          escalated: false,
+          options: [],
+        })
         return {
           content: [{ type: 'text', text: `Error: ${message}` }],
           status: { type: 'incomplete', reason: 'error', error: message },
@@ -118,11 +123,31 @@ function createChatAdapter(
   }
 }
 
+function GuidedOptions({ options }: { options: ChatOption[] }) {
+  if (!options.length) return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <ThreadPrimitive.Suggestion
+          key={opt.id}
+          prompt={opt.label}
+          send
+          className="rounded-full border bg-background px-3 py-1.5 text-left text-xs font-medium transition-colors hover:bg-accent"
+        >
+          {opt.label}
+        </ThreadPrimitive.Suggestion>
+      ))}
+    </div>
+  )
+}
+
 function AiThread({
   conversationIdRef,
+  options,
   onMeta,
 }: {
   conversationIdRef: MutableRefObject<string | null>
+  options: ChatOption[]
   onMeta: (meta: SessionMeta) => void
 }) {
   const adapter = useMemo(
@@ -133,37 +158,25 @@ function AiThread({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <ThreadPrimitive.Root className="flex h-full flex-col bg-background">
-        <ThreadPrimitive.Viewport className="relative flex flex-1 flex-col overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-6 pb-4">
+      <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+        <ThreadPrimitive.Viewport className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-2xl flex-col px-4 pt-6 pb-4">
             <ThreadPrimitive.Empty>
-              <div className="flex flex-1 flex-col items-center justify-center gap-6 py-10 text-center">
+              <div className="flex flex-col items-center justify-center gap-6 py-10 text-center">
                 <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted/40">
                   <Bot className="size-6 text-muted-foreground" />
                 </div>
                 <div className="space-y-1">
                   <h2 className="text-lg font-semibold tracking-tight">
-                    Test the customer AI
+                    Guided customer chat
                   </h2>
                   <p className="max-w-sm text-sm text-muted-foreground">
-                    Same RAG chat path the main site will use. Ask about fares,
-                    hours, or force an escalation.
+                    Tap a topic for instant answers (no AI). Or type a free question
+                    for RAG.
                   </p>
                 </div>
-                <div className="grid w-full max-w-md gap-2 sm:grid-cols-3">
-                  {SUGGESTIONS.map((item) => (
-                    <ThreadPrimitive.Suggestion
-                      key={item.prompt}
-                      prompt={item.prompt}
-                      send
-                      className="rounded-xl border bg-card px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent"
-                    >
-                      <span className="font-medium">{item.title}</span>
-                      <span className="mt-0.5 block text-xs text-muted-foreground line-clamp-2">
-                        {item.prompt}
-                      </span>
-                    </ThreadPrimitive.Suggestion>
-                  ))}
+                <div className="w-full max-w-lg text-left">
+                  <GuidedOptions options={options} />
                 </div>
               </div>
             </ThreadPrimitive.Empty>
@@ -194,49 +207,55 @@ function AiThread({
               }}
             />
           </div>
-
-          <ThreadPrimitive.ViewportFooter className="sticky bottom-0 border-t bg-background/95 px-4 py-3 backdrop-blur">
-            <div className="relative mx-auto w-full max-w-2xl">
-              <ThreadPrimitive.ScrollToBottom asChild>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  className="absolute -top-12 left-1/2 size-8 -translate-x-1/2 rounded-full disabled:invisible"
-                >
-                  <ArrowDownIcon className="size-4" />
-                </Button>
-              </ThreadPrimitive.ScrollToBottom>
-
-              <ComposerPrimitive.Root className="flex items-end gap-2 rounded-2xl border bg-muted/30 p-2">
-                <ComposerPrimitive.Input
-                  placeholder="Ask the AI like a customer would…"
-                  rows={1}
-                  className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
-                />
-                <ThreadPrimitive.If running={false}>
-                  <ComposerPrimitive.Send asChild>
-                    <Button type="button" size="icon" className="size-9 shrink-0 rounded-full">
-                      <SendHorizonal className="size-4" />
-                    </Button>
-                  </ComposerPrimitive.Send>
-                </ThreadPrimitive.If>
-                <ThreadPrimitive.If running>
-                  <ComposerPrimitive.Cancel asChild>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="secondary"
-                      className="size-9 shrink-0 rounded-full"
-                    >
-                      <Square className="size-3.5 fill-current" />
-                    </Button>
-                  </ComposerPrimitive.Cancel>
-                </ThreadPrimitive.If>
-              </ComposerPrimitive.Root>
-            </div>
-          </ThreadPrimitive.ViewportFooter>
         </ThreadPrimitive.Viewport>
+
+        <div className="shrink-0 border-t bg-background px-4 py-3">
+          <div className="relative mx-auto flex w-full max-w-2xl flex-col gap-3">
+            <ThreadPrimitive.ScrollToBottom asChild>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="absolute -top-12 left-1/2 size-8 -translate-x-1/2 rounded-full disabled:invisible"
+              >
+                <ArrowDownIcon className="size-4" />
+              </Button>
+            </ThreadPrimitive.ScrollToBottom>
+
+            <ThreadPrimitive.If empty={false}>
+              <div className="max-h-28 overflow-y-auto">
+                <GuidedOptions options={options} />
+              </div>
+            </ThreadPrimitive.If>
+
+            <ComposerPrimitive.Root className="flex items-end gap-2 rounded-2xl border bg-muted/30 p-2">
+              <ComposerPrimitive.Input
+                placeholder="Or type a free question…"
+                rows={1}
+                className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
+              />
+              <ThreadPrimitive.If running={false}>
+                <ComposerPrimitive.Send asChild>
+                  <Button type="button" size="icon" className="size-9 shrink-0 rounded-full">
+                    <SendHorizonal className="size-4" />
+                  </Button>
+                </ComposerPrimitive.Send>
+              </ThreadPrimitive.If>
+              <ThreadPrimitive.If running>
+                <ComposerPrimitive.Cancel asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="size-9 shrink-0 rounded-full"
+                  >
+                    <Square className="size-3.5 fill-current" />
+                  </Button>
+                </ComposerPrimitive.Cancel>
+              </ThreadPrimitive.If>
+            </ComposerPrimitive.Root>
+          </div>
+        </div>
       </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>
   )
@@ -249,24 +268,35 @@ export function AiPlaygroundPage() {
     conversationId: null,
     status: null,
     escalated: false,
+    options: [],
   })
+
+  useEffect(() => {
+    void api<{ options: ChatOption[] }>('/chat/options', { auth: false })
+      .then((data) => {
+        setMeta((m) => ({ ...m, options: data.options ?? [] }))
+      })
+      .catch(() => {
+        /* ignore until backend is up */
+      })
+  }, [sessionKey])
 
   const onMeta = useCallback((next: SessionMeta) => setMeta(next), [])
 
   const reset = () => {
     conversationIdRef.current = null
-    setMeta({ conversationId: null, status: null, escalated: false })
+    setMeta({ conversationId: null, status: null, escalated: false, options: [] })
     setSessionKey((k) => k + 1)
   }
 
   return (
-    <div className="flex h-screen min-h-0 flex-1 flex-col">
-      <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">AI playground</h1>
           <p className="text-xs text-muted-foreground">
-            Hits <code className="rounded bg-muted px-1 py-0.5">POST /chat/message</code> —
-            reusable later on the main site
+            Guided buttons (no LLM) + free-text RAG via{' '}
+            <code className="rounded bg-muted px-1 py-0.5">POST /chat/message</code>
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -280,9 +310,7 @@ export function AiPlaygroundPage() {
               )}
             >
               {meta.status}
-              {meta.conversationId
-                ? ` · ${meta.conversationId.slice(-6)}`
-                : null}
+              {meta.conversationId ? ` · ${meta.conversationId.slice(-6)}` : null}
             </span>
           )}
           <Button type="button" variant="outline" size="sm" onClick={reset}>
@@ -292,10 +320,11 @@ export function AiPlaygroundPage() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <AiThread
           key={sessionKey}
           conversationIdRef={conversationIdRef}
+          options={meta.options}
           onMeta={onMeta}
         />
       </div>

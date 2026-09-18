@@ -257,7 +257,7 @@ export function InboxPage() {
     (!selected.assignedAdminId || String(selected.assignedAdminId) === String(admin?.id))
 
   return (
-    <div className="flex h-[calc(100vh)] min-h-0 flex-1">
+    <div className="flex h-full min-h-0 flex-1 overflow-hidden">
       <div className="flex w-80 flex-col border-r">
         <div className="space-y-3 border-b p-4">
           <div>

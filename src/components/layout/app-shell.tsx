@@ -21,8 +21,8 @@ export function AppShell() {
   if (!token) return <Navigate to="/login" replace />
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="flex w-60 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <div className="flex h-svh overflow-hidden bg-background">
+      <aside className="flex w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
         <div className="px-4 py-5">
           <div className="text-lg font-semibold tracking-tight">Damic</div>
           <p className="text-xs text-muted-foreground">Admin console</p>
@@ -76,7 +76,7 @@ export function AppShell() {
           </div>
         </div>
       </aside>
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Outlet />
       </main>
     </div>

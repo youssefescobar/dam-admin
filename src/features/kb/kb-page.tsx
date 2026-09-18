@@ -137,7 +137,7 @@ export function KbPage() {
   }
 
   return (
-    <div className="flex h-screen min-h-0 flex-1">
+    <div className="flex h-full min-h-0 flex-1 overflow-hidden">
       <div className="flex w-96 flex-col border-r">
         <div className="space-y-3 border-b p-4">
           <div className="flex items-start justify-between gap-2">
