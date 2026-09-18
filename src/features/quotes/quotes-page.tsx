@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   flexRender,
@@ -35,6 +36,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { MoreHorizontal } from 'lucide-react'
 
 export function QuotesPage() {
@@ -43,6 +53,8 @@ export function QuotesPage() {
   const [contactFilter, setContactFilter] = useState('')
   const [phoneFilter, setPhoneFilter] = useState('')
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [detail, setDetail] = useState<Quote | null>(null)
+  const [priceDraft, setPriceDraft] = useState('')
 
   const query = useQuery({
     queryKey: ['quotes', status],
@@ -58,9 +70,10 @@ export function QuotesPage() {
         method: 'PATCH',
         body: payload.body,
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] })
       toast.success('Quote updated')
+      setDetail(data.quote)
     },
     onError: (err: Error) => toast.error(err.message),
   })
@@ -96,10 +109,19 @@ export function QuotesPage() {
         accessorKey: 'customerName',
         header: 'Customer',
         cell: ({ row }) => (
-          <div>
+          <button
+            type="button"
+            className="text-left hover:underline"
+            onClick={() => {
+              setDetail(row.original)
+              setPriceDraft(
+                row.original.quotedPrice != null ? String(row.original.quotedPrice) : ''
+              )
+            }}
+          >
             <div className="font-medium">{row.original.customerName}</div>
             <div className="text-xs text-muted-foreground">{row.original.customerContact}</div>
-          </div>
+          </button>
         ),
       },
       {
@@ -132,7 +154,8 @@ export function QuotesPage() {
       {
         accessorKey: 'quotedPrice',
         header: 'Price',
-        cell: ({ row }) => (row.original.quotedPrice != null ? `$${row.original.quotedPrice}` : '—'),
+        cell: ({ row }) =>
+          row.original.quotedPrice != null ? `$${row.original.quotedPrice}` : '—',
       },
       {
         id: 'actions',
@@ -147,15 +170,13 @@ export function QuotesPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() => {
-                  const price = Number(window.prompt('Quoted price?', String(row.original.quotedPrice || '')))
-                  if (!price) return
-                  patchMutation.mutate({
-                    id: row.original._id,
-                    body: { status: 'quoted', quotedPrice: price },
-                  })
+                  setDetail(row.original)
+                  setPriceDraft(
+                    row.original.quotedPrice != null ? String(row.original.quotedPrice) : ''
+                  )
                 }}
               >
-                Set price / quoted
+                View details
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
@@ -286,6 +307,104 @@ export function QuotesPage() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={Boolean(detail)} onOpenChange={(open) => !open && setDetail(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{detail?.customerName}</DialogTitle>
+            <DialogDescription>{detail?.customerContact}</DialogDescription>
+          </DialogHeader>
+          {detail && (
+            <div className="grid gap-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="text-xs text-muted-foreground">Pickup</div>
+                  <div>{detail.pickup}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Dropoff</div>
+                  <div>{detail.dropoff}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Date</div>
+                  <div>{new Date(detail.date).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Vehicle</div>
+                  <div>{detail.vehicleType}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Passengers</div>
+                  <div>{detail.passengers}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Status</div>
+                  <div className="capitalize">{detail.status}</div>
+                </div>
+              </div>
+              {detail.notes ? (
+                <div>
+                  <div className="text-xs text-muted-foreground">Notes</div>
+                  <p className="whitespace-pre-wrap">{detail.notes}</p>
+                </div>
+              ) : null}
+              <div className="space-y-1.5">
+                <Label htmlFor="quote-price">Quoted price</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="quote-price"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={priceDraft}
+                    onChange={(e) => setPriceDraft(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    disabled={patchMutation.isPending || !Number(priceDraft)}
+                    onClick={() =>
+                      patchMutation.mutate({
+                        id: detail._id,
+                        body: { status: 'quoted', quotedPrice: Number(priceDraft) },
+                      })
+                    }
+                  >
+                    Set quoted
+                  </Button>
+                </div>
+              </div>
+              {detail.conversationId ? (
+                <Button asChild variant="outline" type="button">
+                  <Link to="/inbox">Open inbox (related chat)</Link>
+                </Button>
+              ) : null}
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDetail(null)}>
+              Close
+            </Button>
+            {detail && (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => patchMutation.mutate({ id: detail._id, body: { status: 'won' } })}
+                >
+                  Mark won
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => patchMutation.mutate({ id: detail._id, body: { status: 'lost' } })}
+                >
+                  Mark lost
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

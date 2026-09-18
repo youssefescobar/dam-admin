@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Navigate } from 'react-router-dom'
-import { Bot, Inbox, LogOut, Moon, Sun, Table2, Activity } from 'lucide-react'
+import { BookOpen, Bot, Inbox, LogOut, Moon, Sun, Table2, Activity } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/features/auth/auth-context'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 const nav = [
   { to: '/quotes', label: 'Quotes', icon: Table2 },
   { to: '/inbox', label: 'Inbox', icon: Inbox },
+  { to: '/kb', label: 'Knowledge', icon: BookOpen },
   { to: '/ai', label: 'AI', icon: Bot },
 ]
 

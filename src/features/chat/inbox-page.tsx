@@ -204,10 +204,12 @@ export function InboxPage() {
     }
     socket.on('conversation:escalated', refresh)
     socket.on('conversation:claimed', refresh)
+    socket.on('conversation:closed', refresh)
     socket.on('quote:new', refresh)
     return () => {
       socket.off('conversation:escalated', refresh)
       socket.off('conversation:claimed', refresh)
+      socket.off('conversation:closed', refresh)
       socket.off('quote:new', refresh)
     }
   }, [queryClient])
@@ -216,14 +218,10 @@ export function InboxPage() {
     mutationFn: async (conversationId: string) => {
       const socket = connectAdminSocket()
       return new Promise<void>((resolve, reject) => {
-        socket.emit(
-          'admin:claim',
-          { conversationId, adminId: admin?.id },
-          (ack: { ok?: boolean; error?: string }) => {
-            if (!ack?.ok) reject(new Error(ack?.error || 'Claim failed'))
-            else resolve()
-          }
-        )
+        socket.emit('admin:claim', { conversationId }, (ack: { ok?: boolean; error?: string }) => {
+          if (!ack?.ok) reject(new Error(ack?.error || 'Claim failed'))
+          else resolve()
+        })
       })
     },
     onSuccess: (_, conversationId) => {
@@ -232,6 +230,23 @@ export function InboxPage() {
       setSelectedId(conversationId)
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  const closeMutation = useMutation({
+    mutationFn: (conversationId: string) =>
+      api<{ conversation: Conversation }>(`/conversations/${conversationId}`, {
+        method: 'PATCH',
+        body: { status: 'closed' },
+      }),
+    onSuccess: () => {
+      toast.success('Conversation closed')
+      setStatusFilter('closed')
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      if (selectedId) {
+        queryClient.invalidateQueries({ queryKey: ['messages', selectedId] })
+      }
     },
     onError: (err: Error) => toast.error(err.message),
   })
@@ -249,8 +264,8 @@ export function InboxPage() {
             <h1 className="text-xl font-semibold">Inbox</h1>
             <p className="text-xs text-muted-foreground">Escalations & claimed chats</p>
           </div>
-          <div className="flex gap-2">
-            {(['needs_human', 'claimed', 'ai_handling'] as const).map((s) => (
+          <div className="flex flex-wrap gap-2">
+            {(['needs_human', 'claimed', 'ai_handling', 'closed'] as const).map((s) => (
               <Button
                 key={s}
                 size="sm"
@@ -258,7 +273,13 @@ export function InboxPage() {
                 type="button"
                 onClick={() => setStatusFilter(s)}
               >
-                {s === 'needs_human' ? 'Needs human' : s === 'claimed' ? 'Claimed' : 'AI'}
+                {s === 'needs_human'
+                  ? 'Needs human'
+                  : s === 'claimed'
+                    ? 'Claimed'
+                    : s === 'ai_handling'
+                      ? 'AI'
+                      : 'Closed'}
               </Button>
             ))}
           </div>
@@ -291,22 +312,34 @@ export function InboxPage() {
       <div className="flex min-w-0 flex-1 flex-col">
         {selectedId && selected ? (
           <>
-            <div className="flex items-center justify-between border-b px-4 py-3">
+            <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
               <div>
                 <div className="font-medium">{selected.customer?.name}</div>
                 <div className="text-xs text-muted-foreground">
                   {selected.customer?.contact} · {selected.status}
                 </div>
               </div>
-              {selected.status === 'needs_human' && (
-                <Button
-                  type="button"
-                  onClick={() => claimMutation.mutate(selected._id)}
-                  disabled={claimMutation.isPending}
-                >
-                  Claim
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {selected.status === 'needs_human' && (
+                  <Button
+                    type="button"
+                    onClick={() => claimMutation.mutate(selected._id)}
+                    disabled={claimMutation.isPending}
+                  >
+                    Claim
+                  </Button>
+                )}
+                {selected.status !== 'closed' && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => closeMutation.mutate(selected._id)}
+                    disabled={closeMutation.isPending}
+                  >
+                    Close
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="min-h-0 flex-1">
               <ConversationThread conversationId={selectedId} canReply={Boolean(canReply)} />

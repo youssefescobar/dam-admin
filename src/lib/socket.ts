@@ -1,5 +1,6 @@
-import { io, type Socket } from 'socket.io-client'
+import { getToken } from '@/lib/auth'
 import { apiBaseUrl } from '@/lib/api'
+import { io, type Socket } from 'socket.io-client'
 
 let socket: Socket | null = null
 
@@ -8,6 +9,9 @@ export function getSocket(): Socket {
     socket = io(apiBaseUrl(), {
       transports: ['websocket'],
       autoConnect: false,
+      auth: (cb) => {
+        cb({ token: getToken() || '' })
+      },
     })
   }
   return socket
@@ -16,7 +20,7 @@ export function getSocket(): Socket {
 export function connectAdminSocket() {
   const s = getSocket()
   if (!s.connected) s.connect()
-  s.emit('join:admin-queue')
+  s.emit('join:admin-queue', {})
   return s
 }
 

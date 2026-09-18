@@ -42,9 +42,10 @@ CORS: backend `.env` can use `CORS_ORIGIN=*` or `http://127.0.0.1:5173`.
 | Route | Purpose |
 |-------|---------|
 | `/login` | JWT login |
-| `/quotes` | Quotes data table (status, date range, phone filter, patch price/status) |
-| `/inbox` | Escalation queue + assistant-ui thread (claim + admin reply via sockets) |
-| `/ai` | AI playground — assistant-ui + `POST /chat/message` (same path as future main-site chat) |
+| `/quotes` | Quotes table + detail dialog (price, notes, won/lost) |
+| `/inbox` | Escalation queue + claim / close + assistant-ui thread |
+| `/kb` | Knowledge base CRUD + CSV import (embeds on save) |
+| `/ai` | AI playground — assistant-ui + `POST /chat/message` |
 
 ## PWA & phone notifications
 

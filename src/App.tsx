@@ -7,6 +7,7 @@ import { AppShell } from '@/components/layout/app-shell'
 import { QuotesPage } from '@/features/quotes/quotes-page'
 import { InboxPage } from '@/features/chat/inbox-page'
 import { AiPlaygroundPage } from '@/features/ai/ai-playground-page'
+import { KbPage } from '@/features/kb/kb-page'
 import { Toaster } from '@/components/ui/sonner'
 
 const queryClient = new QueryClient({
@@ -26,6 +27,7 @@ export default function App() {
               <Route element={<AppShell />}>
                 <Route path="/quotes" element={<QuotesPage />} />
                 <Route path="/inbox" element={<InboxPage />} />
+                <Route path="/kb" element={<KbPage />} />
                 <Route path="/ai" element={<AiPlaygroundPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/quotes" replace />} />
