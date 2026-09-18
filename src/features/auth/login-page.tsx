@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PwaInstallBanner } from '@/components/layout/pwa-install-banner'
 
 export function LoginPage() {
   const { login, token } = useAuth()
@@ -33,7 +34,9 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-svh flex-col bg-background">
+      <PwaInstallBanner />
+      <div className="flex flex-1 items-center justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center">
           <img
@@ -76,6 +79,7 @@ export function LoginPage() {
           </form>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

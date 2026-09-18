@@ -209,7 +209,7 @@ export function QuotesPage() {
   })
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6">
+    <div className="flex flex-1 flex-col gap-4 overflow-auto p-4 sm:p-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Quotes</h1>
         <p className="text-sm text-muted-foreground">Queue and lifecycle for transfer requests.</p>
@@ -269,7 +269,7 @@ export function QuotesPage() {
 
       <div
         className={cn(
-          'rounded-xl border bg-card transition-opacity duration-200',
+          'overflow-x-auto rounded-xl border bg-card transition-opacity duration-200',
           query.isFetching && !query.isLoading && 'opacity-60'
         )}
       >

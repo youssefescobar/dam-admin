@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { BookOpen, Pencil, Plus, Trash2, Upload, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import type { KbEntry } from '@/lib/types'
@@ -139,7 +139,12 @@ export function KbPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden">
-      <div className="flex w-96 flex-col border-r">
+      <div
+        className={cn(
+          'flex w-full flex-col border-r md:w-96 md:shrink-0',
+          selectedId ? 'hidden md:flex' : 'flex'
+        )}
+      >
         <div className="space-y-3 border-b p-4">
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -211,21 +216,38 @@ export function KbPage() {
         </ScrollArea>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          'min-w-0 flex-1 flex-col',
+          selectedId ? 'flex' : 'hidden md:flex'
+        )}
+      >
         {selected ? (
           <>
-            <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold">{selected.title}</h2>
-                <p className="text-xs text-muted-foreground">
-                  Updated{' '}
-                  {selected.updatedAt
-                    ? new Date(selected.updatedAt).toLocaleString()
-                    : '—'}
-                  {selected.chunks?.length != null
-                    ? ` · ${selected.chunks.length} chunk(s)`
-                    : null}
-                </p>
+            <div className="flex items-start justify-between gap-3 border-b px-3 py-3 sm:px-4">
+              <div className="flex min-w-0 items-start gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="mt-0.5 shrink-0 md:hidden"
+                  aria-label="Back to list"
+                  onClick={() => setSelectedId(null)}
+                >
+                  <ArrowLeft className="size-4" />
+                </Button>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold">{selected.title}</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Updated{' '}
+                    {selected.updatedAt
+                      ? new Date(selected.updatedAt).toLocaleString()
+                      : '—'}
+                    {selected.chunks?.length != null
+                      ? ` · ${selected.chunks.length} chunk(s)`
+                      : null}
+                  </p>
+                </div>
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button
@@ -243,7 +265,7 @@ export function KbPage() {
                   }
                 >
                   <Pencil className="size-3.5" />
-                  Edit
+                  <span className="hidden sm:inline">Edit</span>
                 </Button>
                 <Button
                   type="button"
@@ -256,11 +278,11 @@ export function KbPage() {
                   }}
                 >
                   <Trash2 className="size-3.5" />
-                  Delete
+                  <span className="hidden sm:inline">Delete</span>
                 </Button>
               </div>
             </div>
-            <ScrollArea className="flex-1 p-6">
+            <ScrollArea className="flex-1 p-4 sm:p-6">
               <pre className="animate-fade-in whitespace-pre-wrap font-sans text-sm leading-relaxed">
                 {selected.content}
               </pre>
@@ -269,7 +291,7 @@ export function KbPage() {
         ) : listQuery.isLoading ? (
           <DetailPanelSkeleton />
         ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+          <div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
             Select an entry, create one, or import a CSV (`title,content`).
           </div>
         )}

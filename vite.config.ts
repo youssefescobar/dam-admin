@@ -28,6 +28,8 @@ export default defineConfig({
         orientation: 'any',
         start_url: '/',
         scope: '/',
+        id: '/',
+        categories: ['business', 'productivity'],
         icons: [
           {
             src: '/icons/icon-192.png',

@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { ListPanelSkeleton, ThreadSkeleton } from '@/components/loading/skeletons'
+import { ArrowLeft } from 'lucide-react'
 
 function toThreadMessages(messages: ChatMessage[]): ThreadMessageLike[] {
   return messages
@@ -261,7 +262,12 @@ export function InboxPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden">
-      <div className="flex w-80 flex-col border-r">
+      <div
+        className={cn(
+          'flex w-full flex-col border-r md:w-80 md:shrink-0',
+          selectedId ? 'hidden md:flex' : 'flex'
+        )}
+      >
         <div className="space-y-3 border-b p-4">
           <div>
             <h1 className="text-xl font-semibold">Inbox</h1>
@@ -314,20 +320,38 @@ export function InboxPage() {
         </ScrollArea>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          'min-w-0 flex-1 flex-col',
+          selectedId ? 'flex' : 'hidden md:flex'
+        )}
+      >
         {selectedId && selected ? (
           <>
-            <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
-              <div>
-                <div className="font-medium">{selected.customer?.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {selected.customer?.contact} · {selected.status}
+            <div className="flex items-center justify-between gap-2 border-b px-3 py-3 sm:px-4">
+              <div className="flex min-w-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 md:hidden"
+                  aria-label="Back to list"
+                  onClick={() => setSelectedId(null)}
+                >
+                  <ArrowLeft className="size-4" />
+                </Button>
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{selected.customer?.name}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {selected.customer?.contact} · {selected.status}
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex shrink-0 gap-2">
                 {selected.status === 'needs_human' && (
                   <Button
                     type="button"
+                    size="sm"
                     onClick={() => claimMutation.mutate(selected._id)}
                     disabled={claimMutation.isPending}
                   >
@@ -337,6 +361,7 @@ export function InboxPage() {
                 {selected.status !== 'closed' && (
                   <Button
                     type="button"
+                    size="sm"
                     variant="outline"
                     onClick={() => closeMutation.mutate(selected._id)}
                     disabled={closeMutation.isPending}
@@ -351,7 +376,7 @@ export function InboxPage() {
             </div>
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+          <div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
             Select a conversation to open the thread.
           </div>
         )}
