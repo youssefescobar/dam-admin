@@ -17,7 +17,8 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { ListPanelSkeleton, ThreadSkeleton } from '@/components/loading/skeletons'
-import { ArrowLeft } from 'lucide-react'
+import { StatusChip, CONVERSATION_STATUS_LABEL } from '@/components/ui/status-chip'
+import { ArrowLeft, MessageCircle } from 'lucide-react'
 
 function toThreadMessages(messages: ChatMessage[]): ThreadMessageLike[] {
   return messages
@@ -115,7 +116,7 @@ function ConversationThread({
     isRunning: false,
     onNew: async (message) => {
       if (!canReply) {
-        toast.error('Claim this conversation before replying')
+        toast.error('Claim this chat first to reply')
         throw new Error('Not claimed')
       }
       const text = message.content
@@ -177,7 +178,7 @@ function ConversationThread({
               </ComposerPrimitive.Root>
             ) : (
               <p className="text-center text-sm text-muted-foreground">
-                Claim this conversation to reply as a human agent.
+                Claim this chat to reply as a team member.
               </p>
             )}
           </div>
@@ -229,7 +230,7 @@ export function InboxPage() {
       })
     },
     onSuccess: (_, conversationId) => {
-      toast.success('Conversation claimed')
+      toast.success('You’re on this chat')
       setStatusFilter('claimed')
       setSelectedId(conversationId)
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
@@ -245,7 +246,7 @@ export function InboxPage() {
         body: { status: 'closed' },
       }),
     onSuccess: () => {
-      toast.success('Conversation closed')
+      toast.message('Chat closed')
       setStatusFilter('closed')
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
       if (selectedId) {
@@ -271,7 +272,9 @@ export function InboxPage() {
         <div className="space-y-3 border-b p-4">
           <div>
             <h1 className="text-xl font-semibold">Inbox</h1>
-            <p className="text-xs text-muted-foreground">Escalations & claimed chats</p>
+            <p className="text-xs text-muted-foreground">
+              Live chats that need a person — claim and reply here.
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {(['needs_human', 'claimed', 'ai_handling', 'closed'] as const).map((s) => (
@@ -282,13 +285,7 @@ export function InboxPage() {
                 type="button"
                 onClick={() => setStatusFilter(s)}
               >
-                {s === 'needs_human'
-                  ? 'Needs human'
-                  : s === 'claimed'
-                    ? 'Claimed'
-                    : s === 'ai_handling'
-                      ? 'AI'
-                      : 'Closed'}
+                {CONVERSATION_STATUS_LABEL[s]}
               </Button>
             ))}
           </div>
@@ -303,18 +300,31 @@ export function InboxPage() {
                   type="button"
                   onClick={() => setSelectedId(c._id)}
                   className={cn(
-                    'animate-fade-in w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors',
-                    selectedId === c._id ? 'border-primary bg-accent' : 'hover:bg-muted/60'
+                    'animate-fade-in w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
+                    selectedId === c._id
+                      ? 'border-primary bg-accent'
+                      : c.status === 'needs_human'
+                        ? 'border-orange-200 bg-orange-50/60 hover:bg-orange-50 dark:border-orange-900/50 dark:bg-orange-950/30'
+                        : 'hover:bg-muted/60'
                   )}
                 >
-                  <div className="font-medium">{c.customer?.name || 'Guest'}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {c.customer?.contact} · {c.status}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 font-medium">{c.customer?.name || 'Guest'}</div>
+                    <StatusChip kind="conversation" status={c.status} className="shrink-0" />
+                  </div>
+                  <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {c.customer?.contact || 'No contact'}
                   </div>
                 </button>
               ))}
             {!listQuery.isLoading && !(listQuery.data?.conversations.length) && (
-              <p className="p-4 text-center text-sm text-muted-foreground">No conversations.</p>
+              <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-muted-foreground">
+                <MessageCircle className="size-8 opacity-50" />
+                <p className="text-sm font-medium text-foreground">Nothing in this filter</p>
+                <p className="text-xs">
+                  When a chat needs a human, it lands under “Needs you”.
+                </p>
+              </div>
             )}
           </div>
         </ScrollArea>
@@ -341,9 +351,12 @@ export function InboxPage() {
                   <ArrowLeft className="size-4" />
                 </Button>
                 <div className="min-w-0">
-                  <div className="truncate font-medium">{selected.customer?.name}</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate font-medium">{selected.customer?.name}</span>
+                    <StatusChip kind="conversation" status={selected.status} />
+                  </div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {selected.customer?.contact} · {selected.status}
+                    {selected.customer?.contact}
                   </div>
                 </div>
               </div>
@@ -355,7 +368,7 @@ export function InboxPage() {
                     onClick={() => claimMutation.mutate(selected._id)}
                     disabled={claimMutation.isPending}
                   >
-                    Claim
+                    {claimMutation.isPending ? 'Claiming…' : 'Claim chat'}
                   </Button>
                 )}
                 {selected.status !== 'closed' && (
@@ -376,8 +389,12 @@ export function InboxPage() {
             </div>
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
-            Select a conversation to open the thread.
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-muted-foreground">
+            <MessageCircle className="size-10 opacity-40" />
+            <p className="text-sm font-medium text-foreground">Select a conversation</p>
+            <p className="max-w-xs text-xs">
+              Pick a chat on the left to read the thread and reply.
+            </p>
           </div>
         )}
       </div>

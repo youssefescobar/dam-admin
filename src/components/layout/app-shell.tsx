@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { PushNotificationsToggle } from '@/components/layout/push-notifications-toggle'
 import { PwaInstallBanner } from '@/components/layout/pwa-install-banner'
+import { useLiveAlerts } from '@/hooks/use-live-alerts'
 import { cn } from '@/lib/utils'
 
 const nav = [
@@ -46,7 +47,7 @@ function BrandBlock({ compact = false }: { compact?: boolean }) {
         </div>
         {!compact && (
           <p className="text-xs leading-snug text-muted-foreground">
-            Durrah Al Munawwara admin console
+            Quotes, inbox & knowledge
           </p>
         )}
       </div>
@@ -99,7 +100,8 @@ function SidebarNav({
         ))}
       </nav>
       <div className="space-y-2 border-t border-sidebar-border p-3">
-        <div className="truncate px-2 text-xs text-muted-foreground">{admin?.email}</div>
+        <div className="truncate px-2 text-xs font-medium">{admin?.name || 'Admin'}</div>
+        <div className="truncate px-2 text-[11px] text-muted-foreground">{admin?.email}</div>
         <PushNotificationsToggle />
         <div className="flex gap-2">
           <Button
@@ -107,13 +109,14 @@ function SidebarNav({
             size="icon"
             className="shrink-0"
             type="button"
+            aria-label="Toggle theme"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
             {theme === 'dark' ? <Sun /> : <Moon />}
           </Button>
           <Button variant="outline" className="flex-1" type="button" onClick={logout}>
             <LogOut />
-            Logout
+            Sign out
           </Button>
         </div>
       </div>
@@ -124,6 +127,8 @@ function SidebarNav({
 export function AppShell() {
   const { token } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  useLiveAlerts(Boolean(token))
 
   const inboxQuery = useQuery({
     queryKey: ['conversations', 'needs_human'],

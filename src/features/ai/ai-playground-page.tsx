@@ -13,7 +13,7 @@ import { ArrowDownIcon, Bot, RotateCcw, SendHorizonal, Square } from 'lucide-rea
 import { toast } from 'sonner'
 import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { StatusChip } from '@/components/ui/status-chip'
 
 type ChatOption = { id: string; label: string }
 
@@ -294,30 +294,17 @@ export function AiPlaygroundPage() {
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">AI chat</h1>
           <p className="text-xs text-muted-foreground">
-            Preview how customers experience guided topics and free-text answers.
+            Try the customer experience — guided topics or free questions.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {meta.status && (
-            <span
-              className={cn(
-                'hidden rounded-full border px-2.5 py-1 text-xs font-medium sm:inline-flex',
-                meta.escalated
-                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200'
-                  : 'bg-muted text-muted-foreground'
-              )}
-            >
-              {meta.escalated
-                ? 'Needs human'
-                : meta.status === 'ai_handling'
-                  ? 'AI handling'
-                  : meta.status === 'claimed'
-                    ? 'Claimed'
-                    : meta.status === 'closed'
-                      ? 'Closed'
-                      : meta.status}
-            </span>
-          )}
+          {meta.status ? (
+            <StatusChip
+              kind="conversation"
+              status={meta.escalated ? 'needs_human' : meta.status}
+              className="hidden sm:inline-flex"
+            />
+          ) : null}
           <Button type="button" variant="outline" size="sm" onClick={reset}>
             <RotateCcw className="size-3.5" />
             New chat

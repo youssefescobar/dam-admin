@@ -80,7 +80,7 @@ export function KbPage() {
       return api<{ entry: KbEntry }>('/kb', { method: 'POST', body })
     },
     onSuccess: (data) => {
-      toast.success(editor.mode === 'edit' ? 'Entry updated' : 'Entry created')
+      toast.success(editor.mode === 'edit' ? 'Saved' : 'Added to knowledge')
       setEditor(emptyEditor())
       setSelectedId(data.entry._id)
       queryClient.invalidateQueries({ queryKey: ['kb'] })
@@ -91,7 +91,7 @@ export function KbPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api(`/kb/${id}`, { method: 'DELETE' }),
     onSuccess: (_, id) => {
-      toast.success('Entry deleted')
+      toast.message('Removed from knowledge')
       if (selectedId === id) setSelectedId(null)
       queryClient.invalidateQueries({ queryKey: ['kb'] })
     },
@@ -116,10 +116,12 @@ export function KbPage() {
       }),
     onSuccess: (data) => {
       toast.success(
-        `Import done — created ${data.created}, updated ${data.updated}, skipped ${data.skipped}`
+        `Import finished · ${data.created} new, ${data.updated} updated${
+          data.skipped ? `, ${data.skipped} skipped` : ''
+        }`
       )
       if (data.errors?.length) {
-        toast.message(`${data.errors.length} row(s) failed (see console)`)
+        toast.message(`${data.errors.length} row(s) couldn’t be imported`)
         console.warn(data.errors)
       }
       setImportOpen(false)
@@ -148,9 +150,9 @@ export function KbPage() {
         <div className="space-y-3 border-b p-4">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h1 className="text-xl font-semibold">Knowledge base</h1>
+              <h1 className="text-xl font-semibold">Knowledge</h1>
               <p className="text-xs text-muted-foreground">
-                Answers the assistant uses for customer questions
+                Answers the assistant uses when customers ask questions.
               </p>
             </div>
             <BookOpen className="size-5 text-muted-foreground" />
@@ -210,7 +212,17 @@ export function KbPage() {
                 </button>
               ))}
             {!listQuery.isLoading && !filtered.length && (
-              <p className="p-4 text-center text-sm text-muted-foreground">No entries yet.</p>
+              <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-muted-foreground">
+                <BookOpen className="size-8 opacity-50" />
+                <p className="text-sm font-medium text-foreground">
+                  {search.trim() ? 'No matches' : 'No knowledge yet'}
+                </p>
+                <p className="text-xs">
+                  {search.trim()
+                    ? 'Try a different search, or clear the filter.'
+                    : 'Add an entry or import a CSV so the assistant can answer customers.'}
+                </p>
+              </div>
             )}
           </div>
         </ScrollArea>
@@ -288,8 +300,13 @@ export function KbPage() {
         ) : listQuery.isLoading ? (
           <DetailPanelSkeleton />
         ) : (
-          <div className="flex flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
-            Select an entry, create one, or import a CSV with title and content columns.
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-muted-foreground">
+            <BookOpen className="size-10 opacity-40" />
+            <p className="text-sm font-medium text-foreground">Pick an entry</p>
+            <p className="max-w-xs text-xs">
+              Select something on the left, create a new one, or import a CSV with title and
+              content columns.
+            </p>
           </div>
         )}
       </div>

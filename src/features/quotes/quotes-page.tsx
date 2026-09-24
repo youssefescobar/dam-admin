@@ -45,8 +45,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, Inbox } from 'lucide-react'
 import { QuotesTableSkeleton } from '@/components/loading/skeletons'
+import { StatusChip, QUOTE_STATUS_LABEL } from '@/components/ui/status-chip'
 import { cn } from '@/lib/utils'
 
 export function QuotesPage() {
@@ -74,7 +75,7 @@ export function QuotesPage() {
       }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] })
-      toast.success('Quote updated')
+      toast.success('Quote saved')
       setDetail(data.quote)
     },
     onError: (err: Error) => toast.error(err.message),
@@ -147,11 +148,7 @@ export function QuotesPage() {
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => (
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize">
-            {row.original.status}
-          </span>
-        ),
+        cell: ({ row }) => <StatusChip kind="quote" status={row.original.status} />,
       },
       {
         accessorKey: 'quotedPrice',
@@ -165,7 +162,7 @@ export function QuotesPage() {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label="Actions">
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
@@ -194,6 +191,11 @@ export function QuotesPage() {
               >
                 Mark lost
               </DropdownMenuItem>
+              {row.original.conversationId ? (
+                <DropdownMenuItem asChild>
+                  <Link to="/inbox">Open related chat</Link>
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         ),
@@ -210,9 +212,19 @@ export function QuotesPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-auto p-4 sm:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Quotes</h1>
-        <p className="text-sm text-muted-foreground">Transfer requests from customers.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Quotes</h1>
+          <p className="text-sm text-muted-foreground">
+            New transfer requests — review, price, and close the loop.
+          </p>
+        </div>
+        {!query.isLoading && (
+          <p className="text-xs text-muted-foreground">
+            {filtered.length} shown
+            {status !== 'all' ? ` · ${QUOTE_STATUS_LABEL[status] || status}` : ''}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -224,10 +236,10 @@ export function QuotesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="quoted">Quoted</SelectItem>
-              <SelectItem value="won">Won</SelectItem>
-              <SelectItem value="lost">Lost</SelectItem>
+              <SelectItem value="new">{QUOTE_STATUS_LABEL.new}</SelectItem>
+              <SelectItem value="quoted">{QUOTE_STATUS_LABEL.quoted}</SelectItem>
+              <SelectItem value="won">{QUOTE_STATUS_LABEL.won}</SelectItem>
+              <SelectItem value="lost">{QUOTE_STATUS_LABEL.lost}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -302,8 +314,14 @@ export function QuotesPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  No quotes match these filters.
+                <TableCell colSpan={columns.length} className="h-36 text-center">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-2 py-4 text-muted-foreground">
+                    <Inbox className="size-8 opacity-50" />
+                    <p className="text-sm font-medium text-foreground">No quotes here yet</p>
+                    <p className="text-xs">
+                      When customers request a transfer, they’ll show up in this list.
+                    </p>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -342,7 +360,7 @@ export function QuotesPage() {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Status</div>
-                  <div className="capitalize">{detail.status}</div>
+                  <StatusChip kind="quote" status={detail.status} />
                 </div>
               </div>
               {detail.notes ? (
@@ -372,7 +390,7 @@ export function QuotesPage() {
                       })
                     }
                   >
-                    Set quoted
+                    Set price
                   </Button>
                 </div>
               </div>

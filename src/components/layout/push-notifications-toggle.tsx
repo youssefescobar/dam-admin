@@ -8,8 +8,9 @@ import {
   getPushStatus,
   type PushStatus,
 } from '@/lib/push'
+import { cn } from '@/lib/utils'
 
-export function PushNotificationsToggle() {
+export function PushNotificationsToggle({ compact = false }: { compact?: boolean }) {
   const [status, setStatus] = useState<PushStatus>('default')
   const [busy, setBusy] = useState(false)
 
@@ -26,14 +27,14 @@ export function PushNotificationsToggle() {
     try {
       if (status === 'subscribed') {
         await disablePushNotifications()
-        toast.success('Notifications disabled on this device')
+        toast.message('Alerts off on this device')
       } else {
         await enablePushNotifications()
-        toast.success('This device will get quote & escalation alerts')
+        toast.success('You’ll get alerts for new quotes and chats')
       }
       await refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Push setup failed')
+      toast.error(err instanceof Error ? err.message : 'Couldn’t update notifications')
       await refresh()
     } finally {
       setBusy(false)
@@ -42,35 +43,41 @@ export function PushNotificationsToggle() {
 
   if (status === 'unsupported') {
     return (
-      <p className="px-2 text-[11px] leading-snug text-muted-foreground">
-        Push not supported in this browser. Use Chrome/Edge, or install the app on iOS.
+      <p className="px-1 text-[11px] leading-snug text-muted-foreground">
+        Install the app (or use Chrome) to get push alerts.
       </p>
     )
   }
 
   if (status === 'denied') {
     return (
-      <p className="px-2 text-[11px] leading-snug text-muted-foreground">
-        Notifications blocked — enable them in browser settings for this site.
+      <p className="px-1 text-[11px] leading-snug text-muted-foreground">
+        Alerts are blocked. Allow notifications for this site in your browser settings.
       </p>
     )
   }
 
-  const label =
-    status === 'subscribed' ? 'Notifications on' : 'Enable notifications'
-  const Icon = status === 'subscribed' ? BellRing : status === 'default' ? Bell : BellOff
+  const on = status === 'subscribed'
+  const Icon = on ? BellRing : status === 'default' ? Bell : BellOff
 
   return (
-    <Button
-      type="button"
-      variant={status === 'subscribed' ? 'secondary' : 'outline'}
-      size="sm"
-      className="w-full justify-start gap-2"
-      disabled={busy}
-      onClick={() => void onToggle()}
-    >
-      <Icon className="size-4 shrink-0" />
-      {busy ? 'Working…' : label}
-    </Button>
+    <div className="space-y-1.5">
+      {!on && !compact && (
+        <p className="px-1 text-[11px] leading-snug text-muted-foreground">
+          Turn on alerts so you don’t miss new quotes or waiting chats.
+        </p>
+      )}
+      <Button
+        type="button"
+        variant={on ? 'secondary' : 'default'}
+        size="sm"
+        className={cn('w-full justify-start gap-2', !on && 'shadow-sm')}
+        disabled={busy}
+        onClick={() => void onToggle()}
+      >
+        <Icon className="size-4 shrink-0" />
+        {busy ? 'Updating…' : on ? 'Alerts on' : 'Turn on alerts'}
+      </Button>
+    </div>
   )
 }
