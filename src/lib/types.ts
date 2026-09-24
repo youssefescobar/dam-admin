@@ -36,7 +36,6 @@ export type KbEntry = {
   _id: string
   title: string
   content: string
-  chunks?: { text: string }[]
   createdAt?: string
   updatedAt?: string
 }

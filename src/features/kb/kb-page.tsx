@@ -243,9 +243,6 @@ export function KbPage() {
                     {selected.updatedAt
                       ? new Date(selected.updatedAt).toLocaleString()
                       : '—'}
-                    {selected.chunks?.length != null
-                      ? ' · Indexed for search'
-                      : null}
                   </p>
                 </div>
               </div>
