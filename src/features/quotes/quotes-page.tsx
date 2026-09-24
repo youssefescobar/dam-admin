@@ -227,11 +227,11 @@ export function QuotesPage() {
         )}
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
+      <div className="grid grid-cols-1 items-end gap-3 sm:flex sm:flex-wrap">
+        <div className="space-y-1 sm:w-[160px]">
           <div className="text-xs text-muted-foreground">Status</div>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -243,31 +243,35 @@ export function QuotesPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
+        <div className="min-w-0 flex-1 space-y-1 sm:max-w-[220px]">
           <div className="text-xs text-muted-foreground">Name / email</div>
           <Input
-            className="w-[200px]"
+            className="w-full"
             placeholder="Filter contact"
             value={contactFilter}
             onChange={(e) => setContactFilter(e.target.value)}
+            inputMode="email"
+            autoCapitalize="off"
+            autoCorrect="off"
           />
         </div>
-        <div className="space-y-1">
+        <div className="min-w-0 flex-1 space-y-1 sm:max-w-[240px]">
           <div className="text-xs text-muted-foreground">Phone</div>
           <PhoneInputField
-            className="w-[220px]"
+            className="w-full"
             value={phoneFilter}
             onChange={setPhoneFilter}
             placeholder="Filter by phone"
           />
         </div>
-        <div className="space-y-1">
+        <div className="min-w-0 flex-1 space-y-1 sm:max-w-[280px]">
           <div className="text-xs text-muted-foreground">Trip date range</div>
           <DateRangePicker value={dateRange} onChange={setDateRange} />
         </div>
         <Button
           variant="outline"
           type="button"
+          className="h-11 w-full sm:h-9 sm:w-auto"
           onClick={() => {
             setStatus('all')
             setContactFilter('')
@@ -279,9 +283,67 @@ export function QuotesPage() {
         </Button>
       </div>
 
+      {/* Mobile: tappable cards */}
       <div
         className={cn(
-          'overflow-x-auto rounded-xl border bg-card transition-opacity duration-200',
+          'space-y-2 md:hidden',
+          query.isFetching && !query.isLoading && 'opacity-60'
+        )}
+      >
+        {query.isLoading && (
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-xl border" />
+            ))}
+          </div>
+        )}
+        {!query.isLoading &&
+          filtered.map((q) => (
+            <button
+              key={q._id}
+              type="button"
+              className="animate-fade-in w-full rounded-xl border bg-card p-3.5 text-left active:bg-muted/50"
+              onClick={() => {
+                setDetail(q)
+                setPriceDraft(q.quotedPrice != null ? String(q.quotedPrice) : '')
+              }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{q.customerName}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {q.customerContact}
+                  </div>
+                </div>
+                <StatusChip kind="quote" status={q.status} className="shrink-0" />
+              </div>
+              <div className="mt-2 text-sm">
+                {q.pickup} → {q.dropoff}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                <span>{new Date(q.date).toLocaleString()}</span>
+                <span>{q.vehicleType}</span>
+                <span>
+                  {q.quotedPrice != null ? `$${q.quotedPrice}` : 'No price yet'}
+                </span>
+              </div>
+            </button>
+          ))}
+        {!query.isLoading && !filtered.length && (
+          <div className="flex flex-col items-center gap-2 rounded-xl border px-4 py-10 text-center text-muted-foreground">
+            <Inbox className="size-8 opacity-50" />
+            <p className="text-sm font-medium text-foreground">No quotes here yet</p>
+            <p className="text-xs">
+              When customers request a transfer, they’ll show up in this list.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <div
+        className={cn(
+          'hidden overflow-x-auto rounded-xl border bg-card transition-opacity duration-200 md:block',
           query.isFetching && !query.isLoading && 'opacity-60'
         )}
       >

@@ -392,7 +392,7 @@ export function KbPage() {
               Delete all existing entries first (replace all)
             </label>
             <Textarea
-              className="min-h-48 font-mono text-base md:text-xs"
+              className="min-h-48 font-mono text-base"
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}
               placeholder={'title,content\n"Hours","We open 9-5"'}

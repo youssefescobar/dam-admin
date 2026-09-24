@@ -231,11 +231,11 @@ function AiThread({
               <ComposerPrimitive.Input
                 placeholder="Or type a free question…"
                 rows={1}
-                className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-base outline-none placeholder:text-muted-foreground md:text-sm"
+                className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 text-base outline-none placeholder:text-muted-foreground"
               />
               <ThreadPrimitive.If running={false}>
                 <ComposerPrimitive.Send asChild>
-                  <Button type="button" size="icon" className="size-9 shrink-0 rounded-full">
+                  <Button type="button" size="icon" className="size-11 shrink-0 rounded-full md:size-9">
                     <SendHorizonal className="size-4" />
                   </Button>
                 </ComposerPrimitive.Send>
@@ -246,7 +246,7 @@ function AiThread({
                     type="button"
                     size="icon"
                     variant="secondary"
-                    className="size-9 shrink-0 rounded-full"
+                    className="size-11 shrink-0 rounded-full md:size-9"
                   >
                     <Square className="size-3.5 fill-current" />
                   </Button>

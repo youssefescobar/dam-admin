@@ -60,7 +60,11 @@ export function LoginPage() {
                 <Input
                   id="email"
                   type="email"
+                  inputMode="email"
                   autoComplete="username"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -79,7 +83,7 @@ export function LoginPage() {
                   required
                 />
               </div>
-              <Button className="w-full" type="submit" disabled={loading}>
+              <Button className="h-11 w-full md:h-9" type="submit" disabled={loading}>
                 {loading ? 'Signing in…' : 'Sign in'}
               </Button>
             </form>

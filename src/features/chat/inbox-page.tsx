@@ -165,15 +165,18 @@ function ConversationThread({
               </div>
             )}
           </ThreadPrimitive.Viewport>
-          <div className="border-t p-3">
+          <div className="border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {canReply ? (
-              <ComposerPrimitive.Root className="flex gap-2">
+              <ComposerPrimitive.Root className="flex items-end gap-2">
                 <ComposerPrimitive.Input
                   placeholder="Reply as admin…"
-                  className="flex-1 rounded-md border border-input bg-transparent px-3 py-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
+                  rows={1}
+                  className="max-h-32 min-h-11 flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <ComposerPrimitive.Send asChild>
-                  <Button type="button">Send</Button>
+                  <Button type="button" className="h-11 shrink-0 md:h-9">
+                    Send
+                  </Button>
                 </ComposerPrimitive.Send>
               </ComposerPrimitive.Root>
             ) : (
@@ -276,11 +279,12 @@ export function InboxPage() {
               Live chats that need a person — claim and reply here.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {(['needs_human', 'claimed', 'ai_handling', 'closed'] as const).map((s) => (
               <Button
                 key={s}
                 size="sm"
+                className="h-10 shrink-0 px-3 md:h-8"
                 variant={statusFilter === s ? 'default' : 'outline'}
                 type="button"
                 onClick={() => setStatusFilter(s)}

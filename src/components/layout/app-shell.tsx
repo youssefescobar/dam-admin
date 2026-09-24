@@ -21,6 +21,7 @@ import { Separator } from '@/components/ui/separator'
 import { PushNotificationsToggle } from '@/components/layout/push-notifications-toggle'
 import { PwaInstallBanner } from '@/components/layout/pwa-install-banner'
 import { useLiveAlerts } from '@/hooks/use-live-alerts'
+import { useKeyboardOpen } from '@/hooks/use-keyboard-open'
 import { cn } from '@/lib/utils'
 
 const nav = [
@@ -84,7 +85,7 @@ function SidebarNav({
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex min-h-11 items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/70'
@@ -99,7 +100,7 @@ function SidebarNav({
           </NavLink>
         ))}
       </nav>
-      <div className="space-y-2 border-t border-sidebar-border p-3">
+      <div className="space-y-2 border-t border-sidebar-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="truncate px-2 text-xs font-medium">{admin?.name || 'Admin'}</div>
         <div className="truncate px-2 text-[11px] text-muted-foreground">{admin?.email}</div>
         <PushNotificationsToggle />
@@ -107,14 +108,14 @@ function SidebarNav({
           <Button
             variant="outline"
             size="icon"
-            className="shrink-0"
+            className="size-11 shrink-0 md:size-9"
             type="button"
             aria-label="Toggle theme"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
             {theme === 'dark' ? <Sun /> : <Moon />}
           </Button>
-          <Button variant="outline" className="flex-1" type="button" onClick={logout}>
+          <Button variant="outline" className="h-11 flex-1 md:h-9" type="button" onClick={logout}>
             <LogOut />
             Sign out
           </Button>
@@ -127,6 +128,7 @@ function SidebarNav({
 export function AppShell() {
   const { token } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const keyboardOpen = useKeyboardOpen()
 
   useLiveAlerts(Boolean(token))
 
@@ -151,15 +153,17 @@ export function AppShell() {
   if (!token) return <Navigate to="/login" replace />
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-background">
-      {/* Mobile chrome */}
-      <div className="flex shrink-0 flex-col md:hidden">
-        <header className="flex items-center justify-between gap-2 border-b px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+      <div
+        className={cn('flex shrink-0 flex-col md:hidden', keyboardOpen && 'hidden')}
+      >
+        <header className="flex min-h-12 items-center justify-between gap-2 border-b px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <BrandBlock compact />
           <Button
             type="button"
             variant="outline"
             size="icon"
+            className="size-11"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setMenuOpen((o) => !o)}
           >
@@ -184,7 +188,7 @@ export function AppShell() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="text-sidebar-foreground"
+                className="size-11 text-sidebar-foreground"
                 onClick={() => setMenuOpen(false)}
               >
                 <X />
@@ -210,35 +214,49 @@ export function AppShell() {
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <PwaInstallBanner className="hidden md:flex" />
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:pb-0">
+          <main
+            className={cn(
+              'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:pb-0',
+              keyboardOpen
+                ? 'pb-0'
+                : 'pb-[calc(3.75rem+env(safe-area-inset-bottom))]'
+            )}
+          >
             <Outlet />
           </main>
         </div>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        {nav.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                'relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium',
-                isActive ? 'text-primary' : 'text-muted-foreground'
-              )
-            }
-          >
-            <span className="relative">
-              <item.icon className="size-5" />
-              {'badgeKey' in item && item.badgeKey === 'inbox' && inboxCount > 0 ? (
-                <span className="absolute -right-2 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-4 text-primary-foreground">
-                  {inboxCount > 9 ? '9+' : inboxCount}
-                </span>
-              ) : null}
-            </span>
-            {item.label}
-          </NavLink>
-        ))}
+      <nav
+        className={cn(
+          'fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden',
+          keyboardOpen && 'hidden'
+        )}
+      >
+        <div className="flex">
+          {nav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  'relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 text-[11px] font-medium',
+                  isActive ? 'text-primary' : 'text-muted-foreground'
+                )
+              }
+            >
+              <span className="relative">
+                <item.icon className="size-5" />
+                {'badgeKey' in item && item.badgeKey === 'inbox' && inboxCount > 0 ? (
+                  <span className="absolute -right-2 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-4 text-primary-foreground">
+                    {inboxCount > 9 ? '9+' : inboxCount}
+                  </span>
+                ) : null}
+              </span>
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
       </nav>
     </div>
   )

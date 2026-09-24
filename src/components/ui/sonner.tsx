@@ -10,6 +10,8 @@ export function Toaster({ ...props }: ToasterProps) {
       position="top-center"
       richColors
       closeButton
+      offset={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
+      mobileOffset={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
       toastOptions={{
         classNames: {
           toast: 'border shadow-md',

@@ -27,7 +27,7 @@ export function PhoneInputField({
       onChange={(v) => onChange?.(v || '')}
       placeholder={placeholder}
       className={cn(
-        'PhoneInput flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-base shadow-xs focus-within:ring-2 focus-within:ring-ring md:text-sm',
+        'PhoneInput flex h-11 w-full items-center rounded-md border border-input bg-transparent px-3 text-base shadow-xs focus-within:ring-2 focus-within:ring-ring md:h-9',
         className
       )}
     />
