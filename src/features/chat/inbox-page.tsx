@@ -313,11 +313,11 @@ export function InboxPage() {
     <div className="flex h-full min-h-0 flex-1 overflow-hidden">
       <div
         className={cn(
-          'flex w-full flex-col border-r md:w-80 md:shrink-0',
+          'flex h-full min-h-0 w-full flex-col overflow-hidden border-r md:w-80 md:shrink-0',
           selectedId ? 'hidden md:flex' : 'flex'
         )}
       >
-        <div className="space-y-3 border-b p-4">
+        <div className="shrink-0 space-y-3 border-b p-4">
           <div>
             <h1 className="text-xl font-semibold">Inbox</h1>
             <p className="text-xs text-muted-foreground">
@@ -339,8 +339,8 @@ export function InboxPage() {
             ))}
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div className="space-y-1 p-2">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
+          <div className="space-y-1.5 p-2 pb-4">
             {listQuery.isLoading && <ListPanelSkeleton rows={6} />}
             {!listQuery.isLoading &&
               (listQuery.data?.conversations ?? []).map((c) => (
@@ -361,12 +361,13 @@ export function InboxPage() {
                     type="button"
                     onClick={() => selectConversation(c._id)}
                     className={cn(
-                      'w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
+                      'w-full border px-3 py-2.5 pr-3 text-left text-sm transition-colors md:pr-10',
+                      'rounded-lg bg-card',
                       selectedId === c._id
                         ? 'border-primary bg-accent'
                         : c.status === 'needs_human'
                           ? 'border-orange-200 bg-orange-50/60 hover:bg-orange-50 dark:border-orange-900/50 dark:bg-orange-950/30'
-                          : 'bg-card hover:bg-muted/60'
+                          : 'hover:bg-muted/60'
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -408,13 +409,13 @@ export function InboxPage() {
 
       <div
         className={cn(
-          'min-w-0 flex-1 flex-col',
+          'min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
           selectedId ? 'flex' : 'hidden md:flex'
         )}
       >
         {selectedId && (selected || deepLinkId === selectedId) ? (
           <>
-            <div className="flex items-center justify-between gap-2 border-b px-3 py-3 sm:px-4">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-3 sm:px-4">
               <div className="flex min-w-0 items-center gap-2">
                 <Button
                   type="button"
@@ -467,7 +468,7 @@ export function InboxPage() {
                 )}
               </div>
             </div>
-            <div className="min-h-0 flex-1">
+            <div className="min-h-0 flex-1 overflow-hidden">
               <ConversationThread
                 conversationId={selectedId}
                 canReply={Boolean(canReply)}
