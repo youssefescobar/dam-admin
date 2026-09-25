@@ -9,6 +9,7 @@ export const QUOTE_STATUS_LABEL: Record<string, string> = {
 
 export const CONVERSATION_STATUS_LABEL: Record<string, string> = {
   needs_human: 'Needs you',
+  mine: 'Mine',
   claimed: 'Claimed',
   ai_handling: 'With AI',
   closed: 'Closed',

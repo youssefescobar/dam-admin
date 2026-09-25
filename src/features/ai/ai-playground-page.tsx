@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MutableRefObject } from 'react'
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
@@ -13,6 +13,9 @@ import { ArrowDownIcon, Bot, RotateCcw, SendHorizonal, Square } from 'lucide-rea
 import { toast } from 'sonner'
 import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { PhoneInputField } from '@/components/ui/phone-input'
 import { StatusChip } from '@/components/ui/status-chip'
 
 type ChatOption = { id: string; label: string }
@@ -32,6 +35,12 @@ type SessionMeta = {
   status: string | null
   escalated: boolean
   options: ChatOption[]
+}
+
+type VisitorIdentity = {
+  name: string
+  email: string
+  phone: string
 }
 
 function messageText(message: ThreadMessage): string {
@@ -54,6 +63,16 @@ function createChatAdapter(
       if (!text) {
         return { content: [{ type: 'text', text: 'Please pick an option or send a message.' }] }
       }
+      if (!conversationIdRef.current) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Start a session with name, email, and phone first.',
+            },
+          ],
+        }
+      }
 
       try {
         const data = await api<ChatReply>('/chat/message', {
@@ -62,9 +81,7 @@ function createChatAdapter(
           signal: abortSignal,
           body: {
             text,
-            conversationId: conversationIdRef.current ?? undefined,
-            customerName: 'Admin AI Test',
-            customerContact: 'ai-test@damic.local',
+            conversationId: conversationIdRef.current,
           },
         })
 
@@ -263,6 +280,13 @@ function AiThread({
 export function AiPlaygroundPage() {
   const conversationIdRef = useRef<string | null>(null)
   const [sessionKey, setSessionKey] = useState(0)
+  const [ready, setReady] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [identity, setIdentity] = useState<VisitorIdentity>({
+    name: '',
+    email: '',
+    phone: '',
+  })
   const [meta, setMeta] = useState<SessionMeta>({
     conversationId: null,
     status: null,
@@ -271,6 +295,7 @@ export function AiPlaygroundPage() {
   })
 
   useEffect(() => {
+    if (!ready) return
     void api<{ options: ChatOption[] }>('/chat/options', { auth: false })
       .then((data) => {
         setMeta((m) => ({ ...m, options: data.options ?? [] }))
@@ -278,12 +303,51 @@ export function AiPlaygroundPage() {
       .catch(() => {
         /* ignore until backend is up */
       })
-  }, [sessionKey])
+  }, [sessionKey, ready])
 
   const onMeta = useCallback((next: SessionMeta) => setMeta(next), [])
 
+  const startSession = async (e: FormEvent) => {
+    e.preventDefault()
+    setStarting(true)
+    try {
+      const data = await api<{
+        conversationId: string
+        status: string
+        customer: { name: string }
+      }>('/chat/session', {
+        method: 'POST',
+        auth: false,
+        body: identity,
+      })
+      conversationIdRef.current = data.conversationId
+      setMeta({
+        conversationId: data.conversationId,
+        status: data.status,
+        escalated: false,
+        options: [],
+      })
+      setReady(true)
+      setSessionKey((k) => k + 1)
+      toast.success(`Chat started as ${data.customer?.name || identity.name}`)
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Couldn’t start chat')
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  const useTestVisitor = () => {
+    setIdentity({
+      name: 'Test Visitor',
+      email: `test-${Date.now()}@damac.local`,
+      phone: '+15555550100',
+    })
+  }
+
   const reset = () => {
     conversationIdRef.current = null
+    setReady(false)
     setMeta({ conversationId: null, status: null, escalated: false, options: [] })
     setSessionKey((k) => k + 1)
   }
@@ -294,7 +358,7 @@ export function AiPlaygroundPage() {
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">AI chat</h1>
           <p className="text-xs text-muted-foreground">
-            Try the customer experience — guided topics or free questions.
+            Try the customer experience — identity first, then guided topics or free questions.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -312,14 +376,81 @@ export function AiPlaygroundPage() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <AiThread
-          key={sessionKey}
-          conversationIdRef={conversationIdRef}
-          options={meta.options}
-          onMeta={onMeta}
-        />
-      </div>
+      {!ready ? (
+        <div className="flex flex-1 items-start justify-center overflow-auto p-4 sm:p-8">
+          <form
+            onSubmit={(e) => void startSession(e)}
+            className="w-full max-w-md space-y-4 rounded-xl border bg-card p-5 shadow-sm"
+          >
+            <div>
+              <h2 className="text-lg font-semibold">Before we chat</h2>
+              <p className="text-sm text-muted-foreground">
+                Customers must share name, email, and phone so agents can tell them apart.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="visitor-name">Name</Label>
+              <Input
+                id="visitor-name"
+                required
+                value={identity.name}
+                onChange={(e) => setIdentity((s) => ({ ...s, name: e.target.value }))}
+                placeholder="Jordan Lee"
+                autoComplete="name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="visitor-email">Email</Label>
+              <Input
+                id="visitor-email"
+                type="email"
+                required
+                value={identity.email}
+                onChange={(e) => setIdentity((s) => ({ ...s, email: e.target.value }))}
+                placeholder="jordan@example.com"
+                autoComplete="email"
+                inputMode="email"
+                autoCapitalize="off"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="visitor-phone">Phone</Label>
+              <PhoneInputField
+                id="visitor-phone"
+                value={identity.phone}
+                onChange={(phone) => setIdentity((s) => ({ ...s, phone }))}
+                placeholder="Mobile number"
+              />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="submit"
+                className="h-11 flex-1 md:h-9"
+                disabled={starting || !identity.name.trim() || !identity.email.trim() || !identity.phone.trim()}
+              >
+                {starting ? 'Starting…' : 'Start chat'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 md:h-9"
+                onClick={useTestVisitor}
+              >
+                Fill test visitor
+              </Button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <AiThread
+            key={sessionKey}
+            conversationIdRef={conversationIdRef}
+            options={meta.options}
+            onMeta={onMeta}
+          />
+        </div>
+      )}
     </div>
   )
 }

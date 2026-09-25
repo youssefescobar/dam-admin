@@ -19,9 +19,19 @@ export type Conversation = {
   customerId: string
   status: 'ai_handling' | 'needs_human' | 'claimed' | 'closed'
   assignedAdminId?: string | null
+  lastActivityAt?: string
+  lastCustomerMessageAt?: string | null
+  lastAdminMessageAt?: string | null
+  hasUnreadCustomerReply?: boolean
   updatedAt?: string
   createdAt?: string
-  customer?: { id: string; name: string; contact: string } | null
+  customer?: {
+    id: string
+    name: string
+    contact: string
+    email?: string | null
+    phone?: string | null
+  } | null
 }
 
 export type ChatMessage = {

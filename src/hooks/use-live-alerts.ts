@@ -3,13 +3,15 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { connectAdminSocket } from '@/lib/socket'
+import { useAuth } from '@/features/auth/auth-context'
 
 /**
- * Live toasts for new quotes & chat escalations while an admin is signed in.
+ * Live toasts for new quotes, escalations, and claimed-chat customer replies.
  */
 export function useLiveAlerts(enabled: boolean) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const { admin } = useAuth()
 
   useEffect(() => {
     if (!enabled) return
@@ -39,7 +41,12 @@ export function useLiveAlerts(enabled: boolean) {
         description: 'A customer is waiting for a human reply.',
         action: {
           label: 'Open inbox',
-          onClick: () => navigate('/inbox'),
+          onClick: () =>
+            navigate(
+              payload.conversationId
+                ? `/inbox?c=${payload.conversationId}`
+                : '/inbox'
+            ),
         },
       })
       if (payload.conversationId) {
@@ -49,12 +56,50 @@ export function useLiveAlerts(enabled: boolean) {
       }
     }
 
+    const onCustomerMessage = (payload: {
+      conversationId?: string
+      assignedAdminId?: string
+      preview?: string
+      customerName?: string
+    }) => {
+      void queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      if (payload.conversationId) {
+        void queryClient.invalidateQueries({
+          queryKey: ['messages', payload.conversationId],
+        })
+      }
+
+      const mine =
+        payload.assignedAdminId &&
+        admin?.id &&
+        String(payload.assignedAdminId) === String(admin.id)
+
+      if (!mine) return
+
+      toast('New message', {
+        description: payload.customerName
+          ? `${payload.customerName}: ${payload.preview || 'Sent a message'}`
+          : payload.preview || 'Customer replied in your chat',
+        action: {
+          label: 'Open',
+          onClick: () =>
+            navigate(
+              payload.conversationId
+                ? `/inbox?c=${payload.conversationId}`
+                : '/inbox'
+            ),
+        },
+      })
+    }
+
     socket.on('quote:new', onQuote)
     socket.on('conversation:escalated', onEscalated)
+    socket.on('conversation:customer_message', onCustomerMessage)
 
     return () => {
       socket.off('quote:new', onQuote)
       socket.off('conversation:escalated', onEscalated)
+      socket.off('conversation:customer_message', onCustomerMessage)
     }
-  }, [enabled, navigate, queryClient])
+  }, [enabled, navigate, queryClient, admin?.id])
 }

@@ -9,6 +9,7 @@ import {
   type ThreadMessageLike,
 } from '@assistant-ui/react'
 import { toast } from 'sonner'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { connectAdminSocket } from '@/lib/socket'
 import { useAuth } from '@/features/auth/auth-context'
@@ -194,16 +195,33 @@ function ConversationThread({
 export function InboxPage() {
   const { admin } = useAuth()
   const queryClient = useQueryClient()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const deepLinkId = searchParams.get('c')
+  const [selectedId, setSelectedId] = useState<string | null>(deepLinkId)
   const [statusFilter, setStatusFilter] = useState('needs_human')
+
+  const listPath =
+    statusFilter === 'mine'
+      ? '/conversations?mine=1'
+      : `/conversations?status=${statusFilter}`
 
   const listQuery = useQuery({
     queryKey: ['conversations', statusFilter],
-    queryFn: () =>
-      api<{ conversations: Conversation[] }>(
-        `/conversations?status=${statusFilter}`
-      ),
+    queryFn: () => api<{ conversations: Conversation[] }>(listPath),
   })
+
+  useEffect(() => {
+    if (!deepLinkId) return
+    setSelectedId(deepLinkId)
+  }, [deepLinkId])
+
+  useEffect(() => {
+    if (!deepLinkId || !listQuery.data) return
+    const found = listQuery.data.conversations.some((c) => c._id === deepLinkId)
+    if (found) return
+    // Deep-linked chat may be in another filter — still select it via messages fetch
+    setSelectedId(deepLinkId)
+  }, [deepLinkId, listQuery.data])
 
   useEffect(() => {
     const socket = connectAdminSocket()
@@ -213,11 +231,13 @@ export function InboxPage() {
     socket.on('conversation:escalated', refresh)
     socket.on('conversation:claimed', refresh)
     socket.on('conversation:closed', refresh)
+    socket.on('conversation:customer_message', refresh)
     socket.on('quote:new', refresh)
     return () => {
       socket.off('conversation:escalated', refresh)
       socket.off('conversation:claimed', refresh)
       socket.off('conversation:closed', refresh)
+      socket.off('conversation:customer_message', refresh)
       socket.off('quote:new', refresh)
     }
   }, [queryClient])
@@ -234,8 +254,9 @@ export function InboxPage() {
     },
     onSuccess: (_, conversationId) => {
       toast.success('You’re on this chat')
-      setStatusFilter('claimed')
+      setStatusFilter('mine')
       setSelectedId(conversationId)
+      setSearchParams({ c: conversationId }, { replace: true })
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
     },
@@ -264,6 +285,13 @@ export function InboxPage() {
     selected?.status === 'claimed' &&
     (!selected.assignedAdminId || String(selected.assignedAdminId) === String(admin?.id))
 
+  const filters = ['needs_human', 'mine', 'claimed', 'ai_handling', 'closed'] as const
+
+  const selectConversation = (id: string) => {
+    setSelectedId(id)
+    setSearchParams({ c: id }, { replace: true })
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-1 overflow-hidden">
       <div
@@ -280,7 +308,7 @@ export function InboxPage() {
             </p>
           </div>
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {(['needs_human', 'claimed', 'ai_handling', 'closed'] as const).map((s) => (
+            {filters.map((s) => (
               <Button
                 key={s}
                 size="sm"
@@ -302,7 +330,7 @@ export function InboxPage() {
                 <button
                   key={c._id}
                   type="button"
-                  onClick={() => setSelectedId(c._id)}
+                  onClick={() => selectConversation(c._id)}
                   className={cn(
                     'animate-fade-in w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
                     selectedId === c._id
@@ -313,7 +341,15 @@ export function InboxPage() {
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 font-medium">{c.customer?.name || 'Guest'}</div>
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      {c.hasUnreadCustomerReply ? (
+                        <span
+                          className="size-2 shrink-0 rounded-full bg-primary"
+                          title="New customer reply"
+                        />
+                      ) : null}
+                      <div className="min-w-0 font-medium">{c.customer?.name || 'Guest'}</div>
+                    </div>
                     <StatusChip kind="conversation" status={c.status} className="shrink-0" />
                   </div>
                   <div className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -340,7 +376,7 @@ export function InboxPage() {
           selectedId ? 'flex' : 'hidden md:flex'
         )}
       >
-        {selectedId && selected ? (
+        {selectedId && (selected || deepLinkId === selectedId) ? (
           <>
             <div className="flex items-center justify-between gap-2 border-b px-3 py-3 sm:px-4">
               <div className="flex min-w-0 items-center gap-2">
@@ -350,22 +386,29 @@ export function InboxPage() {
                   size="icon"
                   className="shrink-0 md:hidden"
                   aria-label="Back to list"
-                  onClick={() => setSelectedId(null)}
+                  onClick={() => {
+                    setSelectedId(null)
+                    setSearchParams({}, { replace: true })
+                  }}
                 >
                   <ArrowLeft className="size-4" />
                 </Button>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-medium">{selected.customer?.name}</span>
-                    <StatusChip kind="conversation" status={selected.status} />
+                    <span className="truncate font-medium">
+                      {selected?.customer?.name || 'Conversation'}
+                    </span>
+                    {selected ? (
+                      <StatusChip kind="conversation" status={selected.status} />
+                    ) : null}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {selected.customer?.contact}
+                    {selected?.customer?.contact}
                   </div>
                 </div>
               </div>
               <div className="flex shrink-0 gap-2">
-                {selected.status === 'needs_human' && (
+                {selected?.status === 'needs_human' && (
                   <Button
                     type="button"
                     size="sm"
@@ -375,7 +418,7 @@ export function InboxPage() {
                     {claimMutation.isPending ? 'Claiming…' : 'Claim chat'}
                   </Button>
                 )}
-                {selected.status !== 'closed' && (
+                {selected && selected.status !== 'closed' && (
                   <Button
                     type="button"
                     size="sm"
@@ -389,7 +432,10 @@ export function InboxPage() {
               </div>
             </div>
             <div className="min-h-0 flex-1">
-              <ConversationThread conversationId={selectedId} canReply={Boolean(canReply)} />
+              <ConversationThread
+                conversationId={selectedId}
+                canReply={Boolean(canReply)}
+              />
             </div>
           </>
         ) : (
