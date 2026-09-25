@@ -142,13 +142,13 @@ function createChatAdapter(
 function GuidedOptions({ options }: { options: ChatOption[] }) {
   if (!options.length) return null
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+    <div className="flex flex-wrap justify-center gap-2">
       {options.map((opt) => (
         <ThreadPrimitive.Suggestion
           key={opt.id}
           prompt={opt.label}
           send
-          className="shrink-0 rounded-full border bg-background px-3 py-1.5 text-left text-xs font-medium transition-colors hover:bg-accent"
+          className="rounded-full border bg-background px-3 py-1.5 text-left text-xs font-medium transition-colors hover:bg-accent"
         >
           {opt.label}
         </ThreadPrimitive.Suggestion>
@@ -191,7 +191,7 @@ function AiThread({
                     assistant.
                   </p>
                 </div>
-                <div className="w-full max-w-lg text-left">
+                <div className="w-full max-w-lg">
                   <GuidedOptions options={options} />
                 </div>
               </div>
@@ -238,11 +238,7 @@ function AiThread({
               </Button>
             </ThreadPrimitive.ScrollToBottom>
 
-            <ThreadPrimitive.If empty={false}>
-              <div className="max-h-28 overflow-y-auto">
-                <GuidedOptions options={options} />
-              </div>
-            </ThreadPrimitive.If>
+
 
             <ComposerPrimitive.Root className="flex items-end gap-2 rounded-2xl border bg-muted/30 p-2">
               <ComposerPrimitive.Input
