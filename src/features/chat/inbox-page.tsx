@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { ListPanelSkeleton, ThreadSkeleton } from '@/components/loading/skeletons'
 import { StatusChip, CONVERSATION_STATUS_LABEL } from '@/components/ui/status-chip'
 import { SwipeToDelete } from '@/components/ui/swipe-to-delete'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ArrowLeft, MessageCircle } from 'lucide-react'
 
 function toThreadMessages(messages: ChatMessage[]): ThreadMessageLike[] {
@@ -166,7 +167,7 @@ function ConversationThread({
               </div>
             )}
           </ThreadPrimitive.Viewport>
-          <div className="shrink-0 border-t bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-3">
+          <div className="shrink-0 border-t bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {canReply ? (
               <ComposerPrimitive.Root className="flex items-end gap-2">
                 <ComposerPrimitive.Input
@@ -181,9 +182,11 @@ function ConversationThread({
                 </ComposerPrimitive.Send>
               </ComposerPrimitive.Root>
             ) : (
-              <p className="text-center text-sm text-muted-foreground">
-                Claim this chat to reply as a team member.
-              </p>
+              <div className="flex flex-col items-center gap-2 py-1 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Claim this chat to reply as a team member.
+                </p>
+              </div>
             )}
           </div>
         </ThreadPrimitive.Root>
@@ -199,6 +202,8 @@ export function InboxPage() {
   const deepLinkId = searchParams.get('c')
   const [selectedId, setSelectedId] = useState<string | null>(deepLinkId)
   const [statusFilter, setStatusFilter] = useState('needs_human')
+  // Stores the conversation ID pending deletion; null = dialog closed.
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
 
   const listPath =
     statusFilter === 'mine'
@@ -324,7 +329,7 @@ export function InboxPage() {
               Live chats that need a person. Claim and reply here.
             </p>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5 scrollbar-hide">
             {filters.map((s) => (
               <Button
                 key={s}
@@ -347,15 +352,12 @@ export function InboxPage() {
                 <SwipeToDelete
                   key={c._id}
                   disabled={deleteMutation.isPending}
-                  onDelete={() => {
-                    if (
-                      window.confirm(
-                        `Delete chat with ${c.customer?.name || 'this customer'}? This cannot be undone.`
-                      )
-                    ) {
-                      deleteMutation.mutate(c._id)
-                    }
-                  }}
+                  onDelete={() =>
+                    setDeleteConfirm({
+                      id: c._id,
+                      name: c.customer?.name || 'this customer',
+                    })
+                  }
                 >
                   <button
                     type="button"
@@ -415,7 +417,7 @@ export function InboxPage() {
       >
         {selectedId && (selected || deepLinkId === selectedId) ? (
           <>
-            <div className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-3 sm:px-4">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-2 border-b px-3 py-2.5 sm:px-4">
               <div className="flex min-w-0 items-center gap-2">
                 <Button
                   type="button"
@@ -485,6 +487,17 @@ export function InboxPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(deleteConfirm)}
+        title="Delete conversation?"
+        description={`Delete chat with ${deleteConfirm?.name ?? ''}? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (deleteConfirm) deleteMutation.mutate(deleteConfirm.id)
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   )
 }

@@ -126,7 +126,7 @@ export function SwipeToDelete({
           type="button"
           disabled={disabled}
           aria-label={label}
-          className="flex w-full flex-col items-center justify-center gap-1 bg-destructive text-xs font-medium text-white"
+          className="flex w-full flex-col items-center justify-center gap-1 bg-destructive text-xs font-medium text-destructive-foreground"
           onClick={onDeleteClick}
         >
           <Trash2 className="size-4" />

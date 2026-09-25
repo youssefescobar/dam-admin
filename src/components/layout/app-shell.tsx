@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -130,6 +130,7 @@ export function AppShell() {
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const keyboardOpen = useKeyboardOpen()
+  const drawerRef = useRef<HTMLElement>(null)
 
   // Inbox thread on mobile: hide bottom tabs so the reply box can sit at the bottom.
   const inboxThreadOpen =
@@ -149,6 +150,19 @@ export function AppShell() {
   })
   const inboxCount = inboxQuery.data?.conversations.length ?? 0
 
+  // Lock body scroll while drawer is open to prevent background scroll on iOS.
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [menuOpen])
+
+  // Close on Escape key.
   useEffect(() => {
     if (!menuOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -156,6 +170,26 @@ export function AppShell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+
+  // Swipe-right-to-close the drawer.
+  useEffect(() => {
+    const el = drawerRef.current
+    if (!el || !menuOpen) return
+    let startX = 0
+    const onTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX
+    }
+    const onTouchEnd = (e: TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - startX
+      if (dx > 72) setMenuOpen(false)
+    }
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchend', onTouchEnd)
+    }
   }, [menuOpen])
 
   if (!token) return <Navigate to="/login" replace />
@@ -189,7 +223,10 @@ export function AppShell() {
             aria-label="Close menu"
             onClick={() => setMenuOpen(false)}
           />
-          <aside className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col bg-sidebar text-sidebar-foreground shadow-xl animate-fade-in">
+          <aside
+            ref={drawerRef}
+            className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col bg-sidebar text-sidebar-foreground shadow-xl animate-slide-in-from-right"
+          >
             <div className="flex items-center justify-between gap-2 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
               <BrandBlock compact />
               <Button

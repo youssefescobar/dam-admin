@@ -24,8 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { DetailPanelSkeleton, ListPanelSkeleton } from '@/components/loading/skeletons'
+
 
 type EditorState = {
   open: boolean
@@ -52,6 +55,8 @@ export function KbPage() {
   const [importMode, setImportMode] = useState<'upsert' | 'append'>('upsert')
   const [replaceAll, setReplaceAll] = useState(false)
   const [csvText, setCsvText] = useState('')
+  // Stores the KB entry pending deletion; null = dialog closed.
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null)
 
   const listQuery = useQuery({
     queryKey: ['kb'],
@@ -143,7 +148,7 @@ export function KbPage() {
     <div className="flex h-full min-h-0 flex-1 overflow-hidden">
       <div
         className={cn(
-          'flex w-full flex-col border-r md:w-96 md:shrink-0',
+          'flex w-full flex-col overflow-hidden border-r md:w-96 md:shrink-0',
           selectedId ? 'hidden md:flex' : 'flex'
         )}
       >
@@ -280,11 +285,9 @@ export function KbPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    if (window.confirm('Delete this KB entry?')) {
-                      deleteMutation.mutate(selected._id)
-                    }
-                  }}
+                  onClick={() =>
+                    setDeleteConfirm({ id: selected._id, title: selected.title })
+                  }
                 >
                   <Trash2 className="size-3.5" />
                   <span className="hidden sm:inline">Delete</span>
@@ -383,11 +386,10 @@ export function KbPage() {
                 </SelectContent>
               </Select>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm select-none">
+              <Checkbox
                 checked={replaceAll}
-                onChange={(e) => setReplaceAll(e.target.checked)}
+                onCheckedChange={(checked) => setReplaceAll(Boolean(checked))}
               />
               Delete all existing entries first (replace all)
             </label>
@@ -412,6 +414,17 @@ export function KbPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteConfirm)}
+        title="Delete KB entry?"
+        description={deleteConfirm ? `"${deleteConfirm.title}" will be permanently removed.` : undefined}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (deleteConfirm) deleteMutation.mutate(deleteConfirm.id)
+        }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   )
 }

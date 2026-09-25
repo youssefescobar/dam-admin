@@ -436,7 +436,8 @@ export function QuotesPage() {
                 <div className="flex gap-2">
                   <Input
                     id="quote-price"
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     min={0}
                     step="0.01"
                     value={priceDraft}
@@ -463,12 +464,9 @@ export function QuotesPage() {
               ) : null}
             </div>
           )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDetail(null)}>
-              Close
-            </Button>
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:items-center">
             {detail && (
-              <>
+              <div className="grid grid-cols-2 gap-2 sm:contents">
                 <Button
                   type="button"
                   variant="secondary"
@@ -483,8 +481,16 @@ export function QuotesPage() {
                 >
                   Mark lost
                 </Button>
-              </>
+              </div>
             )}
+            <Button
+              type="button"
+              variant="outline"
+              className="sm:ml-auto"
+              onClick={() => setDetail(null)}
+            >
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

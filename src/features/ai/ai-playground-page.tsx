@@ -142,13 +142,13 @@ function createChatAdapter(
 function GuidedOptions({ options }: { options: ChatOption[] }) {
   if (!options.length) return null
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
       {options.map((opt) => (
         <ThreadPrimitive.Suggestion
           key={opt.id}
           prompt={opt.label}
           send
-          className="rounded-full border bg-background px-3 py-1.5 text-left text-xs font-medium transition-colors hover:bg-accent"
+          className="shrink-0 rounded-full border bg-background px-3 py-1.5 text-left text-xs font-medium transition-colors hover:bg-accent"
         >
           {opt.label}
         </ThreadPrimitive.Suggestion>
@@ -366,7 +366,6 @@ export function AiPlaygroundPage() {
             <StatusChip
               kind="conversation"
               status={meta.escalated ? 'needs_human' : meta.status}
-              className="hidden sm:inline-flex"
             />
           ) : null}
           <Button type="button" variant="outline" size="sm" onClick={reset}>
@@ -430,14 +429,16 @@ export function AiPlaygroundPage() {
               >
                 {starting ? 'Starting…' : 'Start chat'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 md:h-9"
-                onClick={useTestVisitor}
-              >
-                Fill test visitor
-              </Button>
+              {import.meta.env.DEV && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 md:h-9"
+                  onClick={useTestVisitor}
+                >
+                  Fill test visitor
+                </Button>
+              )}
             </div>
           </form>
         </div>

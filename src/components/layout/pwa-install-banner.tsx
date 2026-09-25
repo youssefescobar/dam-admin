@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Download, Share, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,8 @@ export function PwaInstallBanner({ className }: { className?: string }) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
   const [iosHint, setIosHint] = useState(false)
   const [visible, setVisible] = useState(false)
+  // Track whether the native prompt fired so the fallback timer doesn't race.
+  const promptFiredRef = useRef(false)
 
   useEffect(() => {
     if (isStandalone()) return
@@ -40,6 +42,7 @@ export function PwaInstallBanner({ className }: { className?: string }) {
 
     const onPrompt = (e: Event) => {
       e.preventDefault()
+      promptFiredRef.current = true
       setDeferred(e as BeforeInstallPromptEvent)
       setVisible(true)
     }
@@ -53,10 +56,11 @@ export function PwaInstallBanner({ className }: { className?: string }) {
     window.addEventListener('beforeinstallprompt', onPrompt)
     window.addEventListener('appinstalled', onInstalled)
 
-    // If the native install prompt never fires, still show a compact how-to.
+    // Fallback: only show the "how to install" hint if the native prompt never fired.
     const timer = window.setTimeout(() => {
       if (isStandalone()) return
       if (localStorage.getItem(DISMISS_KEY) === '1') return
+      if (promptFiredRef.current) return
       setVisible(true)
     }, 2500)
 
@@ -108,7 +112,7 @@ export function PwaInstallBanner({ className }: { className?: string }) {
           </p>
         ) : canPrompt ? (
           <p className="truncate text-xs font-medium sm:text-sm">
-            Install DAMAC for home-screen access & alerts
+            Install DAMAC for home-screen access &amp; alerts
           </p>
         ) : (
           <p className="text-xs leading-snug sm:text-sm">
@@ -131,11 +135,12 @@ export function PwaInstallBanner({ className }: { className?: string }) {
           Install
         </Button>
       )}
+      {/* "Not now" is now visible on all screen sizes, not hidden on mobile */}
       <Button
         type="button"
         size="sm"
         variant="ghost"
-        className="hidden h-8 shrink-0 px-2 text-xs sm:inline-flex"
+        className="h-8 shrink-0 px-2 text-xs"
         onClick={dismiss}
       >
         Not now
