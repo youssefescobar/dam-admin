@@ -358,7 +358,7 @@ export function AiPlaygroundPage() {
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight">AI chat</h1>
           <p className="text-xs text-muted-foreground">
-            Try the customer experience — identity first, then guided topics or free questions.
+            Try the customer experience. Identity first, then guided topics or free questions.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -442,13 +442,43 @@ export function AiPlaygroundPage() {
           </form>
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <AiThread
-            key={sessionKey}
-            conversationIdRef={conversationIdRef}
-            options={meta.options}
-            onMeta={onMeta}
-          />
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-b bg-muted/40 px-4 py-2.5">
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Visitor
+              </div>
+              <div className="truncate text-sm font-medium">{identity.name}</div>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Email
+              </div>
+              <div className="truncate text-sm">{identity.email}</div>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Phone
+              </div>
+              <div className="truncate text-sm">{identity.phone || '—'}</div>
+            </div>
+            {meta.status ? (
+              <div className="ms-auto sm:hidden">
+                <StatusChip
+                  kind="conversation"
+                  status={meta.escalated ? 'needs_human' : meta.status}
+                />
+              </div>
+            ) : null}
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <AiThread
+              key={sessionKey}
+              conversationIdRef={conversationIdRef}
+              options={meta.options}
+              onMeta={onMeta}
+            />
+          </div>
         </div>
       )}
     </div>

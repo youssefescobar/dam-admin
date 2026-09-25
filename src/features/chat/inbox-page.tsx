@@ -19,6 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { ListPanelSkeleton, ThreadSkeleton } from '@/components/loading/skeletons'
 import { StatusChip, CONVERSATION_STATUS_LABEL } from '@/components/ui/status-chip'
+import { SwipeToDelete } from '@/components/ui/swipe-to-delete'
 import { ArrowLeft, MessageCircle } from 'lucide-react'
 
 function toThreadMessages(messages: ChatMessage[]): ThreadMessageLike[] {
@@ -231,12 +232,14 @@ export function InboxPage() {
     socket.on('conversation:escalated', refresh)
     socket.on('conversation:claimed', refresh)
     socket.on('conversation:closed', refresh)
+    socket.on('conversation:deleted', refresh)
     socket.on('conversation:customer_message', refresh)
     socket.on('quote:new', refresh)
     return () => {
       socket.off('conversation:escalated', refresh)
       socket.off('conversation:claimed', refresh)
       socket.off('conversation:closed', refresh)
+      socket.off('conversation:deleted', refresh)
       socket.off('conversation:customer_message', refresh)
       socket.off('quote:new', refresh)
     }
@@ -280,6 +283,21 @@ export function InboxPage() {
     onError: (err: Error) => toast.error(err.message),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (conversationId: string) =>
+      api(`/conversations/${conversationId}`, { method: 'DELETE' }),
+    onSuccess: (_, conversationId) => {
+      toast.message('Chat deleted')
+      if (selectedId === conversationId) {
+        setSelectedId(null)
+        setSearchParams({}, { replace: true })
+      }
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      queryClient.removeQueries({ queryKey: ['messages', conversationId] })
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
   const selected = listQuery.data?.conversations.find((c) => c._id === selectedId)
   const canReply =
     selected?.status === 'claimed' &&
@@ -304,7 +322,7 @@ export function InboxPage() {
           <div>
             <h1 className="text-xl font-semibold">Inbox</h1>
             <p className="text-xs text-muted-foreground">
-              Live chats that need a person — claim and reply here.
+              Live chats that need a person. Claim and reply here.
             </p>
           </div>
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -327,35 +345,54 @@ export function InboxPage() {
             {listQuery.isLoading && <ListPanelSkeleton rows={6} />}
             {!listQuery.isLoading &&
               (listQuery.data?.conversations ?? []).map((c) => (
-                <button
+                <SwipeToDelete
                   key={c._id}
-                  type="button"
-                  onClick={() => selectConversation(c._id)}
-                  className={cn(
-                    'animate-fade-in w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
-                    selectedId === c._id
-                      ? 'border-primary bg-accent'
-                      : c.status === 'needs_human'
-                        ? 'border-orange-200 bg-orange-50/60 hover:bg-orange-50 dark:border-orange-900/50 dark:bg-orange-950/30'
-                        : 'hover:bg-muted/60'
-                  )}
+                  disabled={deleteMutation.isPending}
+                  onDelete={() => {
+                    if (
+                      window.confirm(
+                        `Delete chat with ${c.customer?.name || 'this customer'}? This cannot be undone.`
+                      )
+                    ) {
+                      deleteMutation.mutate(c._id)
+                    }
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      {c.hasUnreadCustomerReply ? (
-                        <span
-                          className="size-2 shrink-0 rounded-full bg-primary"
-                          title="New customer reply"
-                        />
-                      ) : null}
-                      <div className="min-w-0 font-medium">{c.customer?.name || 'Guest'}</div>
+                  <button
+                    type="button"
+                    onClick={() => selectConversation(c._id)}
+                    className={cn(
+                      'w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
+                      selectedId === c._id
+                        ? 'border-primary bg-accent'
+                        : c.status === 'needs_human'
+                          ? 'border-orange-200 bg-orange-50/60 hover:bg-orange-50 dark:border-orange-900/50 dark:bg-orange-950/30'
+                          : 'bg-card hover:bg-muted/60'
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        {c.hasUnreadCustomerReply ? (
+                          <span
+                            className="size-2 shrink-0 rounded-full bg-primary"
+                            title="New customer reply"
+                          />
+                        ) : null}
+                        <div className="min-w-0 font-medium">
+                          {c.customer?.name || 'Guest'}
+                        </div>
+                      </div>
+                      <StatusChip
+                        kind="conversation"
+                        status={c.status}
+                        className="shrink-0"
+                      />
                     </div>
-                    <StatusChip kind="conversation" status={c.status} className="shrink-0" />
-                  </div>
-                  <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {c.customer?.contact || 'No contact'}
-                  </div>
-                </button>
+                    <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {c.customer?.contact || 'No contact'}
+                    </div>
+                  </button>
+                </SwipeToDelete>
               ))}
             {!listQuery.isLoading && !(listQuery.data?.conversations.length) && (
               <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-muted-foreground">
