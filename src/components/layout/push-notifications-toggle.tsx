@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Bell, BellOff, BellRing } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import {
   disablePushNotifications,
   enablePushNotifications,
@@ -10,7 +11,7 @@ import {
 } from '@/lib/push'
 import { cn } from '@/lib/utils'
 
-export function PushNotificationsToggle({ compact = false }: { compact?: boolean }) {
+export function PushNotificationsToggle({ compact = false, asMenuItem = false }: { compact?: boolean, asMenuItem?: boolean }) {
   const [status, setStatus] = useState<PushStatus>('default')
   const [busy, setBusy] = useState(false)
 
@@ -41,6 +42,32 @@ export function PushNotificationsToggle({ compact = false }: { compact?: boolean
     }
   }
 
+  const on = status === 'subscribed'
+  const Icon = on ? BellRing : status === 'default' ? Bell : BellOff
+
+  if (asMenuItem) {
+    if (status === 'unsupported' || status === 'denied') {
+      return (
+        <DropdownMenuItem disabled>
+          <BellOff className="mr-2 size-4 text-muted-foreground" />
+          {status === 'unsupported' ? 'Alerts unsupported' : 'Alerts blocked'}
+        </DropdownMenuItem>
+      )
+    }
+    return (
+      <DropdownMenuItem
+        disabled={busy}
+        onSelect={(e) => {
+          e.preventDefault()
+          void onToggle()
+        }}
+      >
+        <Icon className="mr-2 size-4 text-muted-foreground" />
+        {busy ? 'Updating…' : on ? 'Turn off alerts' : 'Turn on alerts'}
+      </DropdownMenuItem>
+    )
+  }
+
   if (status === 'unsupported') {
     return (
       <p className="px-1 text-[11px] leading-snug text-muted-foreground">
@@ -56,9 +83,6 @@ export function PushNotificationsToggle({ compact = false }: { compact?: boolean
       </p>
     )
   }
-
-  const on = status === 'subscribed'
-  const Icon = on ? BellRing : status === 'default' ? Bell : BellOff
 
   return (
     <div className="space-y-1.5">

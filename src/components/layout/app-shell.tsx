@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+
 import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -6,12 +6,20 @@ import {
   Bot,
   Inbox,
   LogOut,
-  Menu,
   Moon,
   Sun,
   Table2,
-  X,
+  User,
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/features/auth/auth-context'
 import { api } from '@/lib/api'
@@ -126,11 +134,10 @@ function SidebarNav({
 }
 
 export function AppShell() {
-  const { token } = useAuth()
+  const { admin, token, logout } = useAuth()
+  const { theme, setTheme } = useTheme()
   const location = useLocation()
-  const [menuOpen, setMenuOpen] = useState(false)
   const keyboardOpen = useKeyboardOpen()
-  const drawerRef = useRef<HTMLElement>(null)
 
   // Inbox thread on mobile: hide bottom tabs so the reply box can sit at the bottom.
   const inboxThreadOpen =
@@ -150,48 +157,6 @@ export function AppShell() {
   })
   const inboxCount = inboxQuery.data?.conversations.length ?? 0
 
-  // Lock body scroll while drawer is open to prevent background scroll on iOS.
-  useEffect(() => {
-    if (menuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [menuOpen])
-
-  // Close on Escape key.
-  useEffect(() => {
-    if (!menuOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [menuOpen])
-
-  // Swipe-right-to-close the drawer.
-  useEffect(() => {
-    const el = drawerRef.current
-    if (!el || !menuOpen) return
-    let startX = 0
-    const onTouchStart = (e: TouchEvent) => {
-      startX = e.touches[0].clientX
-    }
-    const onTouchEnd = (e: TouchEvent) => {
-      const dx = e.changedTouches[0].clientX - startX
-      if (dx > 72) setMenuOpen(false)
-    }
-    el.addEventListener('touchstart', onTouchStart, { passive: true })
-    el.addEventListener('touchend', onTouchEnd, { passive: true })
-    return () => {
-      el.removeEventListener('touchstart', onTouchStart)
-      el.removeEventListener('touchend', onTouchEnd)
-    }
-  }, [menuOpen])
-
   if (!token) return <Navigate to="/login" replace />
 
   return (
@@ -201,52 +166,39 @@ export function AppShell() {
       >
         <header className="flex min-h-12 items-center justify-between gap-2 border-b px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <BrandBlock compact />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="size-11"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            onClick={() => setMenuOpen((o) => !o)}
-          >
-            {menuOpen ? <X /> : <Menu />}
-          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-11 shrink-0 rounded-full" aria-label="Settings">
+                <User className="size-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{admin?.name || 'Admin'}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{admin?.email}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <PushNotificationsToggle asMenuItem />
+                <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                  {theme === 'dark' ? <Sun className="mr-2 size-4" /> : <Moon className="mr-2 size-4" />}
+                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
+                <LogOut className="mr-2 size-4" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
         </header>
         <PwaInstallBanner />
       </div>
-
-      {menuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="Close menu"
-            onClick={() => setMenuOpen(false)}
-          />
-          <aside
-            ref={drawerRef}
-            className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col bg-sidebar text-sidebar-foreground shadow-xl animate-slide-in-from-right"
-          >
-            <div className="flex items-center justify-between gap-2 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
-              <BrandBlock compact />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-11 text-sidebar-foreground"
-                onClick={() => setMenuOpen(false)}
-              >
-                <X />
-              </Button>
-            </div>
-            <Separator />
-            <SidebarNav
-              inboxCount={inboxCount}
-              onNavigate={() => setMenuOpen(false)}
-            />
-          </aside>
-        </div>
-      )}
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <aside className="hidden w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
