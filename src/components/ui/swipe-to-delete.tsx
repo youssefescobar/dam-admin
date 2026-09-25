@@ -1,8 +1,13 @@
-import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import {
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react'
 import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const THRESHOLD = 72
+const THRESHOLD = 64
 const MAX_REVEAL = 88
 
 type SwipeToDeleteProps = {
@@ -15,7 +20,7 @@ type SwipeToDeleteProps = {
 
 /**
  * Horizontal swipe reveals a delete action (touch + mouse).
- * Tap children normally when not swiped open.
+ * Vertical scrolls pass through; a drag suppresses the child click.
  */
 export function SwipeToDelete({
   children,
@@ -28,70 +33,106 @@ export function SwipeToDelete({
   const startY = useRef(0)
   const dragging = useRef(false)
   const axisLocked = useRef<'x' | 'y' | null>(null)
+  const offsetRef = useRef(0)
+  const openRef = useRef(false)
+  const movedRef = useRef(false)
   const [offset, setOffset] = useState(0)
-  const [open, setOpen] = useState(false)
+  const [animating, setAnimating] = useState(false)
 
-  const reset = () => {
-    setOffset(0)
-    setOpen(false)
+  const applyOffset = (value: number, animate = false) => {
+    offsetRef.current = value
+    setAnimating(animate)
+    setOffset(value)
   }
 
-  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+  const reset = (animate = true) => {
+    openRef.current = false
+    applyOffset(0, animate)
+  }
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (disabled) return
+    if (e.pointerType === 'mouse' && e.button !== 0) return
     dragging.current = true
+    movedRef.current = false
     axisLocked.current = null
     startX.current = e.clientX
     startY.current = e.clientY
+    setAnimating(false)
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
-  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (!dragging.current || disabled) return
     const dx = e.clientX - startX.current
     const dy = e.clientY - startY.current
 
     if (!axisLocked.current) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
-      axisLocked.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+      axisLocked.current = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'x' : 'y'
       if (axisLocked.current === 'y') {
         dragging.current = false
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId)
+        } catch {
+          /* already released */
+        }
         return
       }
     }
 
     if (axisLocked.current !== 'x') return
+
     e.preventDefault()
-    const next = Math.min(0, Math.max(-MAX_REVEAL, open ? -MAX_REVEAL + dx : dx))
-    setOffset(next)
+    e.stopPropagation()
+    movedRef.current = true
+
+    const base = openRef.current ? -MAX_REVEAL : 0
+    const next = Math.min(0, Math.max(-MAX_REVEAL, base + dx))
+    applyOffset(next, false)
   }
 
-  const onPointerUp = () => {
-    if (!dragging.current) return
+  const finishGesture = () => {
+    const wasHorizontal = axisLocked.current === 'x'
+    const wasDragging = dragging.current
     dragging.current = false
-    if (axisLocked.current !== 'x') {
-      axisLocked.current = null
-      return
-    }
     axisLocked.current = null
-    if (offset <= -THRESHOLD) {
-      setOffset(-MAX_REVEAL)
-      setOpen(true)
+
+    if (!wasDragging || !wasHorizontal) return
+
+    if (offsetRef.current <= -THRESHOLD) {
+      openRef.current = true
+      applyOffset(-MAX_REVEAL, true)
     } else {
-      reset()
+      reset(true)
+    }
+  }
+
+  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    finishGesture()
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      /* already released */
     }
   }
 
   return (
-    <div className={cn('relative overflow-hidden rounded-lg', className)}>
+    <div
+      className={cn('relative overflow-hidden rounded-lg select-none', className)}
+      data-swipe-open={offset < 0 ? 'true' : 'false'}
+    >
       <div
-        className="absolute inset-y-0 right-0 flex w-[88px] items-stretch justify-end"
+        className="absolute inset-y-0 right-0 z-0 flex w-[88px] items-stretch justify-end"
         aria-hidden={offset === 0}
       >
         <button
           type="button"
           className="flex w-full flex-col items-center justify-center gap-1 bg-destructive px-2 text-xs font-medium text-white"
-          onClick={() => {
-            reset()
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            reset(false)
             onDelete()
           }}
         >
@@ -100,14 +141,28 @@ export function SwipeToDelete({
         </button>
       </div>
       <div
-        className="relative touch-pan-y bg-card transition-transform duration-150 ease-out will-change-transform"
-        style={{ transform: `translateX(${offset}px)` }}
+        className="relative z-10 bg-card will-change-transform"
+        style={{
+          transform: `translate3d(${offset}px, 0, 0)`,
+          transition: animating ? 'transform 160ms ease-out' : 'none',
+          touchAction: 'pan-y',
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        onPointerLeave={() => {
-          if (dragging.current) onPointerUp()
+        onPointerCancel={finishGesture}
+        onClickCapture={(e) => {
+          if (movedRef.current) {
+            e.preventDefault()
+            e.stopPropagation()
+            movedRef.current = false
+            return
+          }
+          if (openRef.current) {
+            e.preventDefault()
+            e.stopPropagation()
+            reset(true)
+          }
         }}
       >
         {children}

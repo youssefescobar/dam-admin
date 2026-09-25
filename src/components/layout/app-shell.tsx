@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, Navigate } from 'react-router-dom'
+import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   BookOpen,
@@ -127,8 +127,16 @@ function SidebarNav({
 
 export function AppShell() {
   const { token } = useAuth()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const keyboardOpen = useKeyboardOpen()
+
+  // Inbox thread on mobile: hide bottom tabs so the reply box can sit at the bottom.
+  const inboxThreadOpen =
+    location.pathname.startsWith('/inbox') &&
+    new URLSearchParams(location.search).has('c')
+
+  const hideBottomChrome = keyboardOpen || inboxThreadOpen
 
   useLiveAlerts(Boolean(token))
 
@@ -217,7 +225,7 @@ export function AppShell() {
           <main
             className={cn(
               'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:pb-0',
-              keyboardOpen
+              hideBottomChrome
                 ? 'pb-0'
                 : 'pb-[calc(3.75rem+env(safe-area-inset-bottom))]'
             )}
@@ -230,7 +238,7 @@ export function AppShell() {
       <nav
         className={cn(
           'fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden',
-          keyboardOpen && 'hidden'
+          hideBottomChrome && 'hidden'
         )}
       >
         <div className="flex">

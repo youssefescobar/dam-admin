@@ -15,7 +15,6 @@ import { connectAdminSocket } from '@/lib/socket'
 import { useAuth } from '@/features/auth/auth-context'
 import type { ChatMessage, Conversation } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { ListPanelSkeleton, ThreadSkeleton } from '@/components/loading/skeletons'
 import { StatusChip, CONVERSATION_STATUS_LABEL } from '@/components/ui/status-chip'
@@ -133,9 +132,9 @@ function ConversationThread({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <div className="flex h-full flex-col">
-        <ThreadPrimitive.Root className="flex h-full flex-col">
-          <ThreadPrimitive.Viewport className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+      <div className="flex h-full min-h-0 flex-col">
+        <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col">
+          <ThreadPrimitive.Viewport className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
             {messagesQuery.isLoading && <ThreadSkeleton />}
             {!messagesQuery.isLoading && (
               <div className="animate-fade-in flex flex-1 flex-col gap-3">
@@ -167,7 +166,7 @@ function ConversationThread({
               </div>
             )}
           </ThreadPrimitive.Viewport>
-          <div className="border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="shrink-0 border-t bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:pb-3">
             {canReply ? (
               <ComposerPrimitive.Root className="flex items-end gap-2">
                 <ComposerPrimitive.Input
@@ -340,7 +339,7 @@ export function InboxPage() {
             ))}
           </div>
         </div>
-        <ScrollArea className="flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="space-y-1 p-2">
             {listQuery.isLoading && <ListPanelSkeleton rows={6} />}
             {!listQuery.isLoading &&
@@ -404,7 +403,7 @@ export function InboxPage() {
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       <div

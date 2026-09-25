@@ -31,7 +31,7 @@ type PushPayload = {
 self.addEventListener('push', (event) => {
   let payload: PushPayload = {
     title: 'DAMAC',
-    body: 'New activity',
+    body: 'Something new needs your attention.',
     data: { url: '/quotes' },
   }
 

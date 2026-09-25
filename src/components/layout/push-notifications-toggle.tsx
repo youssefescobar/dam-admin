@@ -30,7 +30,7 @@ export function PushNotificationsToggle({ compact = false }: { compact?: boolean
         toast.message('Alerts off on this device')
       } else {
         await enablePushNotifications()
-        toast.success('You’ll get alerts for new quotes and chats')
+        toast.success('Alerts on for quotes and chats')
       }
       await refresh()
     } catch (err) {

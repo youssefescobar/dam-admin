@@ -5,8 +5,16 @@ import { useNavigate } from 'react-router-dom'
 import { connectAdminSocket } from '@/lib/socket'
 import { useAuth } from '@/features/auth/auth-context'
 
+function clip(text: string | undefined, max = 100) {
+  const cleaned = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!cleaned) return ''
+  return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned
+}
+
 /**
- * Live toasts for new quotes, escalations, and claimed-chat customer replies.
+ * Live toasts for new quotes, waiting chats, and claimed-chat replies.
  */
 export function useLiveAlerts(enabled: boolean) {
   const queryClient = useQueryClient()
@@ -23,11 +31,12 @@ export function useLiveAlerts(enabled: boolean) {
     }) => {
       void queryClient.invalidateQueries({ queryKey: ['quotes'] })
       const q = payload.quote
-      const title = q?.customerName ? `New quote · ${q.customerName}` : 'New quote request'
-      const body =
-        q?.pickup && q?.dropoff ? `${q.pickup} → ${q.dropoff}` : 'Open Quotes to review'
-      toast(title, {
-        description: body,
+      const name = q?.customerName?.trim()
+      const route =
+        q?.pickup && q?.dropoff ? `${q.pickup} → ${q.dropoff}` : null
+
+      toast(name ? `New quote · ${name}` : 'New quote', {
+        description: route || 'Open Quotes to review the request.',
         action: {
           label: 'View',
           onClick: () => navigate('/quotes'),
@@ -35,12 +44,18 @@ export function useLiveAlerts(enabled: boolean) {
       })
     }
 
-    const onEscalated = (payload: { conversationId?: string }) => {
+    const onEscalated = (payload: {
+      conversationId?: string
+      customerName?: string
+    }) => {
       void queryClient.invalidateQueries({ queryKey: ['conversations'] })
-      toast('Chat needs you', {
-        description: 'A customer is waiting for a human reply.',
+      const name = payload.customerName?.trim()
+      toast('Chat waiting', {
+        description: name
+          ? `${name} asked to speak with someone.`
+          : 'A customer is waiting for a reply.',
         action: {
-          label: 'Open inbox',
+          label: 'Open',
           onClick: () =>
             navigate(
               payload.conversationId
@@ -76,10 +91,11 @@ export function useLiveAlerts(enabled: boolean) {
 
       if (!mine) return
 
-      toast('New message', {
-        description: payload.customerName
-          ? `${payload.customerName}: ${payload.preview || 'Sent a message'}`
-          : payload.preview || 'Customer replied in your chat',
+      const name = payload.customerName?.trim() || 'Customer'
+      const preview = clip(payload.preview)
+
+      toast(`${name} replied`, {
+        description: preview || 'Open the chat to read their message.',
         action: {
           label: 'Open',
           onClick: () =>
