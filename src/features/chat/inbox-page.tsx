@@ -324,12 +324,12 @@ export function InboxPage() {
               Live chats that need a person. Claim and reply here.
             </p>
           </div>
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex flex-wrap gap-1.5">
             {filters.map((s) => (
               <Button
                 key={s}
                 size="sm"
-                className="h-10 shrink-0 px-3 md:h-8"
+                className="h-8 shrink-0 px-2.5 text-xs md:h-7"
                 variant={statusFilter === s ? 'default' : 'outline'}
                 type="button"
                 onClick={() => setStatusFilter(s)}
