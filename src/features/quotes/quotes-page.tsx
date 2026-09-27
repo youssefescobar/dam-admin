@@ -274,7 +274,6 @@ export function QuotesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="individual">Individual</SelectItem>
               <SelectItem value="group">Group</SelectItem>
               <SelectItem value="corporate">Corporate</SelectItem>
               <SelectItem value="company">Company</SelectItem>
