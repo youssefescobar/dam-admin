@@ -53,6 +53,8 @@ import { cn } from '@/lib/utils'
 export function QuotesPage() {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<string>('all')
+  const [customerTypeFilter, setCustomerTypeFilter] = useState<string>('all')
+  const [departmentFilter, setDepartmentFilter] = useState<string>('all')
   const [contactFilter, setContactFilter] = useState('')
   const [phoneFilter, setPhoneFilter] = useState('')
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
@@ -60,10 +62,14 @@ export function QuotesPage() {
   const [priceDraft, setPriceDraft] = useState('')
 
   const query = useQuery({
-    queryKey: ['quotes', status],
+    queryKey: ['quotes', status, customerTypeFilter, departmentFilter],
     queryFn: async () => {
-      const qs = status !== 'all' ? `?status=${status}` : ''
-      return api<{ quotes: Quote[] }>(`/quotes${qs}`)
+      const qs = new URLSearchParams()
+      if (status !== 'all') qs.set('status', status)
+      if (customerTypeFilter !== 'all') qs.set('customerType', customerTypeFilter)
+      if (departmentFilter !== 'all') qs.set('assignedDepartment', departmentFilter)
+      const q = qs.toString()
+      return api<{ quotes: Quote[] }>(`/quotes${q ? `?${q}` : ''}`)
     },
   })
 
@@ -135,6 +141,16 @@ export function QuotesPage() {
             {row.original.pickup} → {row.original.dropoff}
           </span>
         ),
+      },
+      {
+        accessorKey: 'customerType',
+        header: 'Type',
+        cell: ({ row }) => row.original.customerType || row.original.tripType || '—',
+      },
+      {
+        accessorKey: 'assignedDepartment',
+        header: 'Dept',
+        cell: ({ row }) => row.original.assignedDepartment || '—',
       },
       {
         accessorKey: 'date',
@@ -243,6 +259,41 @@ export function QuotesPage() {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1 sm:w-[160px]">
+          <div className="text-xs text-muted-foreground">Customer type</div>
+          <Select value={customerTypeFilter} onValueChange={setCustomerTypeFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="individual">Individual</SelectItem>
+              <SelectItem value="group">Group</SelectItem>
+              <SelectItem value="corporate">Corporate</SelectItem>
+              <SelectItem value="company">Company</SelectItem>
+              <SelectItem value="government">Government</SelectItem>
+              <SelectItem value="school">School</SelectItem>
+              <SelectItem value="hajj_mission">Hajj mission</SelectItem>
+              <SelectItem value="tourism">Tourism</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1 sm:w-[160px]">
+          <div className="text-xs text-muted-foreground">Department</div>
+          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Dept" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="sales">Sales</SelectItem>
+              <SelectItem value="hajj">Hajj</SelectItem>
+              <SelectItem value="corporate">Corporate</SelectItem>
+              <SelectItem value="operations">Operations</SelectItem>
+              <SelectItem value="support">Support</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="min-w-0 flex-1 space-y-1 sm:max-w-[220px]">
           <div className="text-xs text-muted-foreground">Name / email</div>
           <Input
@@ -274,6 +325,8 @@ export function QuotesPage() {
           className="h-11 w-full sm:h-9 sm:w-auto"
           onClick={() => {
             setStatus('all')
+            setCustomerTypeFilter('all')
+            setDepartmentFilter('all')
             setContactFilter('')
             setPhoneFilter('')
             setDateRange(undefined)
@@ -413,8 +466,8 @@ export function QuotesPage() {
                   <div>{new Date(detail.date).toLocaleString()}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Vehicle</div>
-                  <div>{detail.vehicleType}</div>
+                  <div className="text-xs text-muted-foreground">Vehicle / class</div>
+                  <div>{detail.busClass || detail.vehicleType}</div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Passengers</div>
@@ -423,6 +476,69 @@ export function QuotesPage() {
                 <div>
                   <div className="text-xs text-muted-foreground">Status</div>
                   <StatusChip kind="quote" status={detail.status} />
+                </div>
+                {detail.organization ? (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Organization</div>
+                    <div>{detail.organization}</div>
+                  </div>
+                ) : null}
+                {detail.customerType || detail.tripType ? (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Customer type</div>
+                    <div>{detail.customerType || detail.tripType}</div>
+                  </div>
+                ) : null}
+                {detail.serviceType ? (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Service</div>
+                    <div>{detail.serviceType}</div>
+                  </div>
+                ) : null}
+                {detail.email ? (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Email</div>
+                    <div>{detail.email}</div>
+                  </div>
+                ) : null}
+                {detail.accessibilityNeeds ? (
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground">Accessibility</div>
+                    <div>{detail.accessibilityNeeds}</div>
+                  </div>
+                ) : null}
+                {detail.luggageNotes ? (
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground">Luggage</div>
+                    <div>{detail.luggageNotes}</div>
+                  </div>
+                ) : null}
+                <div>
+                  <div className="text-xs text-muted-foreground">Consent</div>
+                  <div>{detail.consent ? 'Yes' : 'No'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Department</div>
+                  <Select
+                    value={detail.assignedDepartment || ''}
+                    onValueChange={(v) =>
+                      patchMutation.mutate({
+                        id: detail._id,
+                        body: { assignedDepartment: v as Quote['assignedDepartment'] },
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Assign" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sales">Sales</SelectItem>
+                      <SelectItem value="hajj">Hajj</SelectItem>
+                      <SelectItem value="corporate">Corporate</SelectItem>
+                      <SelectItem value="operations">Operations</SelectItem>
+                      <SelectItem value="support">Support</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               {detail.notes ? (

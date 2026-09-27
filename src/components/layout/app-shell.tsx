@@ -7,6 +7,7 @@ import {
   Inbox,
   LogOut,
   Moon,
+  Settings,
   Sun,
   Table2,
   User,
@@ -37,6 +38,7 @@ const nav = [
   { to: '/inbox', label: 'Inbox', icon: Inbox, badgeKey: 'inbox' as const },
   { to: '/kb', label: 'Knowledge', icon: BookOpen },
   { to: '/ai', label: 'AI chat', icon: Bot },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 function BrandBlock({ compact = false }: { compact?: boolean }) {

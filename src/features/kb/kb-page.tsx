@@ -36,6 +36,12 @@ type EditorState = {
   id?: string
   title: string
   content: string
+  intent: string
+  category: string
+  locale: 'en' | 'ar'
+  escalate: boolean
+  requiresLiveData: boolean
+  sourceId: string
 }
 
 const emptyEditor = (): EditorState => ({
@@ -43,12 +49,20 @@ const emptyEditor = (): EditorState => ({
   mode: 'create',
   title: '',
   content: '',
+  intent: '',
+  category: '',
+  locale: 'en',
+  escalate: false,
+  requiresLiveData: false,
+  sourceId: '',
 })
 
 export function KbPage() {
   const queryClient = useQueryClient()
   const fileRef = useRef<HTMLInputElement>(null)
   const [search, setSearch] = useState('')
+  const [localeFilter, setLocaleFilter] = useState<string>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editor, setEditor] = useState<EditorState>(emptyEditor)
   const [importOpen, setImportOpen] = useState(false)
@@ -59,17 +73,34 @@ export function KbPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null)
 
   const listQuery = useQuery({
-    queryKey: ['kb'],
-    queryFn: () => api<{ entries: KbEntry[] }>('/kb'),
+    queryKey: ['kb', localeFilter, categoryFilter],
+    queryFn: () => {
+      const qs = new URLSearchParams()
+      if (localeFilter !== 'all') qs.set('locale', localeFilter)
+      if (categoryFilter !== 'all') qs.set('category', categoryFilter)
+      const q = qs.toString()
+      return api<{ entries: KbEntry[] }>(`/kb${q ? `?${q}` : ''}`)
+    },
   })
 
   const entries = listQuery.data?.entries ?? []
+  const categories = useMemo(() => {
+    const set = new Set<string>()
+    for (const e of entries) {
+      if (e.category) set.add(e.category)
+    }
+    return [...set].sort()
+  }, [entries])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return entries
     return entries.filter(
       (e) =>
-        e.title.toLowerCase().includes(q) || e.content.toLowerCase().includes(q)
+        e.title.toLowerCase().includes(q) ||
+        e.content.toLowerCase().includes(q) ||
+        (e.intent || '').toLowerCase().includes(q) ||
+        (e.sourceId || '').toLowerCase().includes(q)
     )
   }, [entries, search])
 
@@ -77,7 +108,16 @@ export function KbPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const body = { title: editor.title.trim(), content: editor.content.trim() }
+      const body = {
+        title: editor.title.trim(),
+        content: editor.content.trim(),
+        intent: editor.intent.trim(),
+        category: editor.category.trim(),
+        locale: editor.locale,
+        escalate: editor.escalate,
+        requiresLiveData: editor.requiresLiveData,
+        sourceId: editor.sourceId.trim() || null,
+      }
       if (!body.title || !body.content) throw new Error('Title and content are required')
       if (editor.mode === 'edit' && editor.id) {
         return api<{ entry: KbEntry }>(`/kb/${editor.id}`, { method: 'PUT', body })
@@ -167,13 +207,36 @@ export function KbPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={localeFilter} onValueChange={setLocaleFilter}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Locale" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All locales</SelectItem>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="ar">Arabic</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               size="sm"
-              onClick={() =>
-                setEditor({ open: true, mode: 'create', title: '', content: '' })
-              }
+              onClick={() => setEditor({ ...emptyEditor(), open: true, mode: 'create' })}
             >
               <Plus className="size-3.5" />
               New
@@ -211,6 +274,24 @@ export function KbPage() {
                   )}
                 >
                   <div className="font-medium line-clamp-2">{e.title}</div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {e.sourceId ? (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{e.sourceId}</span>
+                    ) : null}
+                    {e.locale ? (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase">
+                        {e.locale}
+                      </span>
+                    ) : null}
+                    {e.category ? (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">{e.category}</span>
+                    ) : null}
+                    {e.escalate ? (
+                      <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] text-destructive">
+                        escalate
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                     {e.content}
                   </div>
@@ -256,6 +337,11 @@ export function KbPage() {
                 <div className="min-w-0">
                   <h2 className="text-lg font-semibold">{selected.title}</h2>
                   <p className="text-xs text-muted-foreground">
+                    {[selected.sourceId, selected.intent, selected.category, selected.locale]
+                      .filter(Boolean)
+                      .join(' · ') || '—'}
+                    {selected.escalate ? ' · escalate' : ''}
+                    {' · '}
                     Updated{' '}
                     {selected.updatedAt
                       ? new Date(selected.updatedAt).toLocaleString()
@@ -275,6 +361,12 @@ export function KbPage() {
                       id: selected._id,
                       title: selected.title,
                       content: selected.content,
+                      intent: selected.intent || '',
+                      category: selected.category || '',
+                      locale: selected.locale === 'ar' ? 'ar' : 'en',
+                      escalate: Boolean(selected.escalate),
+                      requiresLiveData: Boolean(selected.requiresLiveData),
+                      sourceId: selected.sourceId || '',
                     })
                   }
                 >
@@ -345,6 +437,67 @@ export function KbPage() {
                 onChange={(e) => setEditor((s) => ({ ...s, content: e.target.value }))}
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Source ID</Label>
+                <Input
+                  value={editor.sourceId}
+                  onChange={(e) => setEditor((s) => ({ ...s, sourceId: e.target.value }))}
+                  placeholder="Q001"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Locale</Label>
+                <Select
+                  value={editor.locale}
+                  onValueChange={(v) =>
+                    setEditor((s) => ({ ...s, locale: v as 'en' | 'ar' }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="ar">Arabic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Intent</Label>
+                <Input
+                  value={editor.intent}
+                  onChange={(e) => setEditor((s) => ({ ...s, intent: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Category</Label>
+                <Input
+                  value={editor.category}
+                  onChange={(e) => setEditor((s) => ({ ...s, category: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={editor.escalate}
+                  onCheckedChange={(v) =>
+                    setEditor((s) => ({ ...s, escalate: Boolean(v) }))
+                  }
+                />
+                Escalate
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={editor.requiresLiveData}
+                  onCheckedChange={(v) =>
+                    setEditor((s) => ({ ...s, requiresLiveData: Boolean(v) }))
+                  }
+                />
+                Requires live data
+              </label>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setEditor(emptyEditor())}>
@@ -366,8 +519,8 @@ export function KbPage() {
           <DialogHeader>
             <DialogTitle>Import CSV</DialogTitle>
             <DialogDescription>
-              Use columns title and content (or question and answer). Matching titles are
-              updated; new titles are added.
+              Columns: id, intent, category, locale, question/title, answer/content, escalate,
+              requires_live_data. Upsert matches source id + locale when present.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

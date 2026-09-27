@@ -12,6 +12,24 @@ export type Quote = {
   quotedPrice: number | null
   conversationId?: string
   createdAt?: string
+  language?: string
+  customerType?: string
+  organization?: string
+  email?: string
+  serviceType?: string
+  originCity?: string
+  destinationCity?: string
+  returnDatetime?: string | null
+  tripType?: string
+  busCount?: number | null
+  busClass?: string
+  luggageNotes?: string
+  accessibilityNeeds?: string
+  specialRequirements?: string
+  preferredContactChannel?: string
+  consent?: boolean
+  priority?: 'normal' | 'high' | 'urgent'
+  assignedDepartment?: string
 }
 
 export type Conversation = {
@@ -46,6 +64,36 @@ export type KbEntry = {
   _id: string
   title: string
   content: string
+  sourceId?: string | null
+  intent?: string
+  category?: string
+  locale?: 'en' | 'ar' | ''
+  escalate?: boolean
+  requiresLiveData?: boolean
   createdAt?: string
+  updatedAt?: string
+}
+
+export type CompanySettings = {
+  _id?: string
+  legalNameAr: string
+  legalNameEn: string
+  email: string
+  phones: string[]
+  whatsappNumber: string
+  addressAr: string
+  addressEn: string
+  workingHoursAr: string
+  workingHoursEn: string
+  fleetSizeNote: string
+  baggagePolicy: string
+  cancellationPolicy: string
+  childFareNote: string
+  quoteSlaHours: number
+  complaintSlaHours: number
+  botGreetingEn: string
+  botGreetingAr: string
+  botClosingEn: string
+  botClosingAr: string
   updatedAt?: string
 }

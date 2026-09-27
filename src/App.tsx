@@ -8,6 +8,7 @@ import { QuotesPage } from '@/features/quotes/quotes-page'
 import { InboxPage } from '@/features/chat/inbox-page'
 import { AiPlaygroundPage } from '@/features/ai/ai-playground-page'
 import { KbPage } from '@/features/kb/kb-page'
+import { SettingsPage } from '@/features/settings/settings-page'
 import { Toaster } from '@/components/ui/sonner'
 
 const queryClient = new QueryClient({
@@ -29,6 +30,7 @@ export default function App() {
                 <Route path="/inbox" element={<InboxPage />} />
                 <Route path="/kb" element={<KbPage />} />
                 <Route path="/ai" element={<AiPlaygroundPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/quotes" replace />} />
             </Routes>
