@@ -134,6 +134,13 @@ export function QuotesPage() {
         ),
       },
       {
+        accessorKey: 'leadId',
+        header: 'Lead',
+        cell: ({ row }) => (
+          <span className="font-mono text-xs">{row.original.leadId || '—'}</span>
+        ),
+      },
+      {
         id: 'route',
         header: 'Route',
         cell: ({ row }) => (
@@ -453,6 +460,12 @@ export function QuotesPage() {
           {detail && (
             <div className="grid gap-3 text-sm">
               <div className="grid grid-cols-2 gap-2">
+                {detail.leadId ? (
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground">Lead ID</div>
+                    <div className="font-mono">{detail.leadId}</div>
+                  </div>
+                ) : null}
                 <div>
                   <div className="text-xs text-muted-foreground">Pickup</div>
                   <div>{detail.pickup}</div>
@@ -461,18 +474,36 @@ export function QuotesPage() {
                   <div className="text-xs text-muted-foreground">Dropoff</div>
                   <div>{detail.dropoff}</div>
                 </div>
+                {detail.stops ? (
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground">Stops</div>
+                    <div>{detail.stops}</div>
+                  </div>
+                ) : null}
                 <div>
                   <div className="text-xs text-muted-foreground">Date</div>
-                  <div>{new Date(detail.date).toLocaleString()}</div>
+                  <div>
+                    {new Date(detail.date).toLocaleString()}
+                    {detail.departureTime ? ` · ${detail.departureTime}` : ''}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Vehicle / class</div>
-                  <div>{detail.busClass || detail.vehicleType}</div>
+                  <div>
+                    {detail.busCount ? `${detail.busCount}× ` : ''}
+                    {detail.busClass || detail.vehicleType}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Passengers</div>
                   <div>{detail.passengers}</div>
                 </div>
+                {detail.waitingHours != null ? (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Waiting hours</div>
+                    <div>{detail.waitingHours}</div>
+                  </div>
+                ) : null}
                 <div>
                   <div className="text-xs text-muted-foreground">Status</div>
                   <StatusChip kind="quote" status={detail.status} />
@@ -511,6 +542,30 @@ export function QuotesPage() {
                   <div className="col-span-2">
                     <div className="text-xs text-muted-foreground">Luggage</div>
                     <div>{detail.luggageNotes}</div>
+                  </div>
+                ) : null}
+                {(detail.needsSupervisors ||
+                  detail.needsTracking ||
+                  detail.needsBranding ||
+                  detail.needsAirportReception) && (
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground">Requirements</div>
+                    <div>
+                      {[
+                        detail.needsSupervisors ? 'Supervisors' : '',
+                        detail.needsTracking ? 'Tracking' : '',
+                        detail.needsBranding ? 'Branding' : '',
+                        detail.needsAirportReception ? 'Airport reception' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </div>
+                  </div>
+                )}
+                {detail.specialRequirements ? (
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground">Special requirements</div>
+                    <div>{detail.specialRequirements}</div>
                   </div>
                 ) : null}
                 <div>

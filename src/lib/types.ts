@@ -26,6 +26,14 @@ export type Quote = {
   luggageNotes?: string
   accessibilityNeeds?: string
   specialRequirements?: string
+  stops?: string
+  departureTime?: string
+  waitingHours?: number | null
+  needsSupervisors?: boolean
+  needsTracking?: boolean
+  needsBranding?: boolean
+  needsAirportReception?: boolean
+  leadId?: string
   preferredContactChannel?: string
   consent?: boolean
   priority?: 'normal' | 'high' | 'urgent'
