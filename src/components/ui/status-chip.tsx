@@ -11,8 +11,19 @@ export const CONVERSATION_STATUS_LABEL: Record<string, string> = {
   needs_human: 'Needs you',
   mine: 'Mine',
   claimed: 'Claimed',
-  ai_handling: 'With AI',
+  ai_handling: 'With Durri',
   closed: 'Closed',
+}
+
+export const REPORT_STATUS_LABEL: Record<string, string> = {
+  new: 'New',
+  in_progress: 'In progress',
+  resolved: 'Resolved',
+}
+
+export const REPORT_TYPE_LABEL: Record<string, string> = {
+  complaint: 'Complaint',
+  lost_found: 'Lost item',
 }
 
 const QUOTE_STATUS_CLASS: Record<string, string> = {
@@ -29,23 +40,35 @@ const CONVERSATION_STATUS_CLASS: Record<string, string> = {
   closed: 'bg-muted text-muted-foreground',
 }
 
+const REPORT_STATUS_CLASS: Record<string, string> = {
+  new: 'bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200',
+  in_progress: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
+  resolved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
+}
+
+const LABELS = {
+  quote: QUOTE_STATUS_LABEL,
+  conversation: CONVERSATION_STATUS_LABEL,
+  report: REPORT_STATUS_LABEL,
+} as const
+
+const TONES = {
+  quote: QUOTE_STATUS_CLASS,
+  conversation: CONVERSATION_STATUS_CLASS,
+  report: REPORT_STATUS_CLASS,
+} as const
+
 export function StatusChip({
   kind,
   status,
   className,
 }: {
-  kind: 'quote' | 'conversation'
+  kind: 'quote' | 'conversation' | 'report'
   status: string
   className?: string
 }) {
-  const label =
-    kind === 'quote'
-      ? QUOTE_STATUS_LABEL[status] || status
-      : CONVERSATION_STATUS_LABEL[status] || status
-  const tone =
-    kind === 'quote'
-      ? QUOTE_STATUS_CLASS[status] || 'bg-muted text-muted-foreground'
-      : CONVERSATION_STATUS_CLASS[status] || 'bg-muted text-muted-foreground'
+  const label = LABELS[kind][status] || status
+  const tone = TONES[kind][status] || 'bg-muted text-muted-foreground'
 
   return (
     <span

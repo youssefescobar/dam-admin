@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   BookOpen,
   Bot,
+  ClipboardList,
   Inbox,
   LogOut,
   Moon,
@@ -36,8 +37,9 @@ import { cn } from '@/lib/utils'
 const nav = [
   { to: '/quotes', label: 'Quotes', icon: Table2 },
   { to: '/inbox', label: 'Inbox', icon: Inbox, badgeKey: 'inbox' as const },
+  { to: '/reports', label: 'Reports', icon: ClipboardList },
   { to: '/kb', label: 'Knowledge', icon: BookOpen },
-  { to: '/ai', label: 'AI chat', icon: Bot },
+  { to: '/ai', label: 'Durri chat', icon: Bot },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

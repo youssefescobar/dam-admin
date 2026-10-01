@@ -68,7 +68,7 @@ function createChatAdapter(
           content: [
             {
               type: 'text',
-              text: 'Start a session with name, email, and phone first.',
+              text: 'Start a session with a name and phone first.',
             },
           ],
         }
@@ -338,7 +338,7 @@ export function AiPlaygroundPage() {
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight">AI chat</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Durri chat</h1>
           <p className="text-xs text-muted-foreground">
             Try the customer experience. Identity first, then guided topics or free questions.
           </p>
@@ -366,7 +366,7 @@ export function AiPlaygroundPage() {
             <div>
               <h2 className="text-lg font-semibold">Before we chat</h2>
               <p className="text-sm text-muted-foreground">
-                Customers must share name, email, and phone so agents can tell them apart.
+                Customers share their name and phone so agents can tell them apart. Email is optional.
               </p>
             </div>
             <div className="space-y-1.5">
@@ -381,11 +381,10 @@ export function AiPlaygroundPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="visitor-email">Email</Label>
+              <Label htmlFor="visitor-email">Email (optional)</Label>
               <Input
                 id="visitor-email"
                 type="email"
-                required
                 value={identity.email}
                 onChange={(e) => setIdentity((s) => ({ ...s, email: e.target.value }))}
                 placeholder="jordan@example.com"

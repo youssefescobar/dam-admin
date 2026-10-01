@@ -108,12 +108,29 @@ export function useLiveAlerts(enabled: boolean) {
       })
     }
 
+    const onReport = (payload: {
+      report?: { type?: string; refNumber?: string; name?: string; tripNumber?: string }
+    }) => {
+      void queryClient.invalidateQueries({ queryKey: ['reports'] })
+      const r = payload.report
+      const kind = r?.type === 'lost_found' ? 'lost item' : 'complaint'
+      const title = r?.refNumber ? 'New ' + kind + ' · ' + r.refNumber : 'New ' + kind
+      toast(title, {
+        description:
+          [r?.name, r?.tripNumber ? 'trip ' + r.tripNumber : ''].filter(Boolean).join(' · ') ||
+          'Open Reports to review it.',
+        action: { label: 'View', onClick: () => navigate('/reports') },
+      })
+    }
+
     socket.on('quote:new', onQuote)
+    socket.on('report:new', onReport)
     socket.on('conversation:escalated', onEscalated)
     socket.on('conversation:customer_message', onCustomerMessage)
 
     return () => {
       socket.off('quote:new', onQuote)
+      socket.off('report:new', onReport)
       socket.off('conversation:escalated', onEscalated)
       socket.off('conversation:customer_message', onCustomerMessage)
     }

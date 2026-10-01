@@ -105,3 +105,25 @@ export type CompanySettings = {
   botClosingAr: string
   updatedAt?: string
 }
+
+export type ReportStatus = 'new' | 'in_progress' | 'resolved'
+
+/** A complaint or lost-item report logged by Durri in the chat. */
+export type Report = {
+  _id: string
+  type: 'complaint' | 'lost_found'
+  refNumber: string
+  customerId?: string
+  conversationId?: string | null
+  name?: string
+  phone?: string
+  tripNumber?: string
+  incidentDate?: string
+  incidentTime?: string
+  seat?: string
+  description?: string
+  status: ReportStatus
+  slaHours?: number | null
+  createdAt?: string
+  updatedAt?: string
+}
