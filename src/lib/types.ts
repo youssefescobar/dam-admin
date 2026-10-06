@@ -1,3 +1,10 @@
+export type QuoteLeg = {
+  from: string
+  to: string
+  date?: string
+  time?: string
+}
+
 export type Quote = {
   _id: string
   customerName: string
@@ -27,6 +34,7 @@ export type Quote = {
   accessibilityNeeds?: string
   specialRequirements?: string
   stops?: string
+  legs?: QuoteLeg[]
   departureTime?: string
   waitingHours?: number | null
   needsSupervisors?: boolean
