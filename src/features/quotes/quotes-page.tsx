@@ -50,6 +50,9 @@ import { QuotesTableSkeleton } from '@/components/loading/skeletons'
 import { StatusChip, QUOTE_STATUS_LABEL } from '@/components/ui/status-chip'
 import { cn } from '@/lib/utils'
 
+const legCountLabel = (q: Quote) =>
+  q.legs && q.legs.length > 1 ? `${q.legs.length} legs` : ''
+
 export function QuotesPage() {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<string>('all')
@@ -146,6 +149,11 @@ export function QuotesPage() {
         cell: ({ row }) => (
           <span>
             {row.original.pickup} → {row.original.dropoff}
+            {legCountLabel(row.original) ? (
+              <span className="ml-2 text-xs text-muted-foreground">
+                {legCountLabel(row.original)}
+              </span>
+            ) : null}
           </span>
         ),
       },
@@ -378,6 +386,9 @@ export function QuotesPage() {
               </div>
               <div className="mt-2 text-sm">
                 {q.pickup} → {q.dropoff}
+                {legCountLabel(q) ? (
+                  <span className="ml-2 text-xs text-muted-foreground">{legCountLabel(q)}</span>
+                ) : null}
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                 <span>{new Date(q.date).toLocaleString()}</span>
@@ -473,7 +484,26 @@ export function QuotesPage() {
                   <div className="text-xs text-muted-foreground">Dropoff</div>
                   <div>{detail.dropoff}</div>
                 </div>
-                {detail.stops ? (
+                {detail.legs && detail.legs.length > 1 ? (
+                  <div className="col-span-2">
+                    <div className="text-xs text-muted-foreground">Itinerary</div>
+                    <ol className="mt-1 grid gap-1">
+                      {detail.legs.map((leg, i) => (
+                        <li key={i} className="flex flex-wrap gap-x-2">
+                          <span className="text-muted-foreground tabular-nums">{i + 1}.</span>
+                          <span>
+                            {leg.from} → {leg.to}
+                          </span>
+                          {leg.date || leg.time ? (
+                            <span className="text-muted-foreground">
+                              {[leg.date, leg.time].filter(Boolean).join(' · ')}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : detail.stops ? (
                   <div className="col-span-2">
                     <div className="text-xs text-muted-foreground">Stops</div>
                     <div>{detail.stops}</div>
