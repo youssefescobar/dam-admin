@@ -3,6 +3,7 @@ import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   BookOpen,
+  BarChart3,
   Bot,
   ClipboardList,
   Inbox,
@@ -39,6 +40,7 @@ const nav = [
   { to: '/inbox', label: 'Inbox', icon: Inbox, badgeKey: 'inbox' as const },
   { to: '/reports', label: 'Reports', icon: ClipboardList },
   { to: '/kb', label: 'Knowledge', icon: BookOpen },
+  { to: '/insights', label: 'Insights', icon: BarChart3 },
   { to: '/ai', label: 'Durri chat', icon: Bot },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]

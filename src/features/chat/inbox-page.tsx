@@ -6,6 +6,7 @@ import {
   ComposerPrimitive,
   MessagePrimitive,
   useExternalStoreRuntime,
+  useAuiState,
   type ThreadMessageLike,
 } from '@assistant-ui/react'
 import { toast } from 'sonner'
@@ -22,6 +23,23 @@ import { SwipeToDelete } from '@/components/ui/swipe-to-delete'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ArrowLeft, MessageCircle } from 'lucide-react'
 
+const SENDER_LABEL: Record<string, string> = {
+  customer: 'Customer',
+  ai: 'Durri',
+  admin: 'Agent',
+  system: 'System',
+}
+
+/** Small "who said this" caption above a bubble. */
+function SenderLabel() {
+  const sender = useAuiState((s) => s.message.metadata?.custom?.sender as string | undefined)
+  return (
+    <div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide opacity-70">
+      {SENDER_LABEL[sender ?? ''] ?? ''}
+    </div>
+  )
+}
+
 function toThreadMessages(messages: ChatMessage[]): ThreadMessageLike[] {
   return messages
     .filter((m) => m.sender === 'customer' || m.sender === 'ai' || m.sender === 'admin' || m.sender === 'system')
@@ -33,6 +51,7 @@ function toThreadMessages(messages: ChatMessage[]): ThreadMessageLike[] {
         content: [{ type: 'text', text: m.text }],
         id: m._id,
         createdAt: new Date(m.createdAt),
+        metadata: { custom: { sender: m.sender } },
       } satisfies ThreadMessageLike
     })
 }
@@ -144,6 +163,7 @@ function ConversationThread({
                     UserMessage: () => (
                       <MessagePrimitive.Root className="flex justify-end">
                         <div className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground">
+                          <SenderLabel />
                           <MessagePrimitive.Content />
                         </div>
                       </MessagePrimitive.Root>
@@ -151,6 +171,7 @@ function ConversationThread({
                     AssistantMessage: () => (
                       <MessagePrimitive.Root className="flex justify-start">
                         <div className="max-w-[80%] rounded-2xl rounded-bl-md border bg-card px-3 py-2 text-sm">
+                          <SenderLabel />
                           <MessagePrimitive.Content />
                         </div>
                       </MessagePrimitive.Root>
@@ -158,6 +179,7 @@ function ConversationThread({
                     SystemMessage: () => (
                       <MessagePrimitive.Root className="flex justify-center">
                         <div className="max-w-[90%] rounded-lg bg-muted px-3 py-1.5 text-center text-xs text-muted-foreground">
+                          <SenderLabel />
                           <MessagePrimitive.Content />
                         </div>
                       </MessagePrimitive.Root>

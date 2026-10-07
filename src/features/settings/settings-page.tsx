@@ -26,8 +26,11 @@ const empty: CompanySettings = {
   complaintSlaHours: 48,
   botGreetingEn: '',
   botGreetingAr: '',
-  botClosingEn: '',
-  botClosingAr: '',
+  officeHoursEnabled: false,
+  timezone: 'Asia/Riyadh',
+  officeDays: [0, 1, 2, 3, 4],
+  officeStart: '09:00',
+  officeEnd: '17:00',
 }
 
 export function SettingsPage() {
@@ -79,8 +82,11 @@ export function SettingsPage() {
       complaintSlaHours: Number(form.complaintSlaHours) || 48,
       botGreetingEn: form.botGreetingEn,
       botGreetingAr: form.botGreetingAr,
-      botClosingEn: form.botClosingEn,
-      botClosingAr: form.botClosingAr,
+      officeHoursEnabled: form.officeHoursEnabled,
+      timezone: form.timezone,
+      officeDays: form.officeDays,
+      officeStart: form.officeStart,
+      officeEnd: form.officeEnd,
     })
   }
 
@@ -238,21 +244,45 @@ export function SettingsPage() {
             dir="rtl"
           />
         </Field>
-        <Field label="Closing (EN)">
-          <Textarea
-            value={form.botClosingEn}
-            onChange={(e) => set('botClosingEn', e.target.value)}
-            rows={2}
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Office hours (handover notice)
+        </h2>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.officeHoursEnabled}
+            onChange={(e) => set('officeHoursEnabled', e.target.checked)}
           />
-        </Field>
-        <Field label="Closing (AR)">
-          <Textarea
-            value={form.botClosingAr}
-            onChange={(e) => set('botClosingAr', e.target.value)}
-            rows={2}
-            dir="rtl"
-          />
-        </Field>
+          Tell customers the team is offline when they ask for a person outside these hours
+        </label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="Timezone (IANA)">
+            <Input value={form.timezone} onChange={(e) => set('timezone', e.target.value)} dir="ltr" />
+          </Field>
+          <Field label="Opens">
+            <Input type="time" value={form.officeStart} onChange={(e) => set('officeStart', e.target.value)} />
+          </Field>
+          <Field label="Closes">
+            <Input type="time" value={form.officeEnd} onChange={(e) => set('officeEnd', e.target.value)} />
+          </Field>
+        </div>
+        <div className="flex flex-wrap gap-3 text-sm">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
+            <label key={d} className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={form.officeDays.includes(i)}
+                onChange={(e) =>
+                  set('officeDays', e.target.checked ? [...form.officeDays, i] : form.officeDays.filter((x) => x !== i))
+                }
+              />
+              {d}
+            </label>
+          ))}
+        </div>
       </section>
 
       <Button onClick={onSave} disabled={saveMutation.isPending}>

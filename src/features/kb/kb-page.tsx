@@ -84,6 +84,16 @@ export function KbPage() {
   })
 
   const entries = listQuery.data?.entries ?? []
+
+  // Entries sharing a sourceId are EN/AR twins; flag the ones missing a counterpart.
+  const allQuery = useQuery({ queryKey: ['kb', 'all'], queryFn: () => api<{ entries: KbEntry[] }>('/kb') })
+  const missingTwin = (e: KbEntry) => {
+    if (!e.sourceId || (e.locale !== 'en' && e.locale !== 'ar')) return null
+    const other = e.locale === 'en' ? 'ar' : 'en'
+    const all = allQuery.data?.entries
+    if (!all || all.some((x) => x.sourceId === e.sourceId && x.locale === other)) return null
+    return other === 'ar' ? 'Arabic' : 'English'
+  }
   const categories = useMemo(() => {
     const set = new Set<string>()
     for (const e of entries) {
@@ -291,6 +301,11 @@ export function KbPage() {
                         escalate
                       </span>
                     ) : null}
+                    {missingTwin(e) ? (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                        no {missingTwin(e)} version
+                      </span>
+                    ) : null}
                   </div>
                   <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                     {e.content}
@@ -386,6 +401,12 @@ export function KbPage() {
                 </Button>
               </div>
             </div>
+            {missingTwin(selected) ? (
+              <p className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                No {missingTwin(selected)} version of this entry (same source ID). Durri may answer less well
+                in that language.
+              </p>
+            ) : null}
             <ScrollArea className="flex-1 p-4 sm:p-6">
               <pre className="animate-fade-in whitespace-pre-wrap font-sans text-sm leading-relaxed">
                 {selected.content}

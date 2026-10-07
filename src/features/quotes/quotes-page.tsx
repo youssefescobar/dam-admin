@@ -140,7 +140,17 @@ export function QuotesPage() {
         accessorKey: 'leadId',
         header: 'Lead',
         cell: ({ row }) => (
-          <span className="font-mono text-xs">{row.original.leadId || '—'}</span>
+          <span className="font-mono text-xs">
+            {row.original.leadId || '—'}
+            {row.original.editedAt ? (
+              <span
+                className="ms-1.5 rounded bg-amber-100 px-1.5 py-0.5 font-sans text-[10px] font-medium text-amber-800"
+                title={`Edited by customer ${new Date(row.original.editedAt).toLocaleString()}`}
+              >
+                Edited
+              </span>
+            ) : null}
+          </span>
         ),
       },
       {

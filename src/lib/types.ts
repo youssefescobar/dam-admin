@@ -42,6 +42,7 @@ export type Quote = {
   needsBranding?: boolean
   needsAirportReception?: boolean
   leadId?: string
+  editedAt?: string | null
   preferredContactChannel?: string
   consent?: boolean
   priority?: 'normal' | 'high' | 'urgent'
@@ -109,8 +110,11 @@ export type CompanySettings = {
   complaintSlaHours: number
   botGreetingEn: string
   botGreetingAr: string
-  botClosingEn: string
-  botClosingAr: string
+  officeHoursEnabled: boolean
+  timezone: string
+  officeDays: number[]
+  officeStart: string
+  officeEnd: string
   updatedAt?: string
 }
 
@@ -134,4 +138,24 @@ export type Report = {
   slaHours?: number | null
   createdAt?: string
   updatedAt?: string
+}
+
+export type UnansweredQuestion = {
+  _id: string
+  question: string
+  language: 'en' | 'ar'
+  reason: string
+  count: number
+  lastAskedAt: string
+  conversationId?: string | null
+  status: 'open' | 'resolved' | 'dismissed'
+}
+
+export type ChatAnalytics = {
+  conversations: number
+  handoverRate: number
+  missRate: number
+  misses: number
+  handovers: Record<string, number>
+  topics: Record<string, number>
 }
