@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/lib/api'
-import { connectAdminSocket } from '@/lib/socket'
+import { connectAdminSocket, joinAdminConversation } from '@/lib/socket'
 import { useAuth } from '@/features/auth/auth-context'
 import type { ChatMessage, Conversation } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -98,12 +98,16 @@ function ConversationThread({
         },
       ])
     }
+    // After a reconnect, refetch to catch messages sent while the socket was down.
+    const onConnect = () => queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
     socket.on('message:new', onNew)
-    socket.emit('join:conversation', { conversationId })
+    socket.on('connect', onConnect)
+    joinAdminConversation(conversationId)
     return () => {
       socket.off('message:new', onNew)
+      socket.off('connect', onConnect)
     }
-  }, [conversationId])
+  }, [conversationId, queryClient])
 
   const sendAdmin = useCallback(
     async (text: string) => {
@@ -235,6 +239,8 @@ export function InboxPage() {
   const listQuery = useQuery({
     queryKey: ['conversations', statusFilter],
     queryFn: () => api<{ conversations: Conversation[] }>(listPath),
+    // Safety net if the socket is silently down; react-query pauses this in hidden tabs.
+    refetchInterval: 20_000,
   })
 
   useEffect(() => {
@@ -261,7 +267,9 @@ export function InboxPage() {
     socket.on('conversation:deleted', refresh)
     socket.on('conversation:customer_message', refresh)
     socket.on('quote:new', refresh)
+    socket.on('connect', refresh)
     return () => {
+      socket.off('connect', refresh)
       socket.off('conversation:escalated', refresh)
       socket.off('conversation:claimed', refresh)
       socket.off('conversation:closed', refresh)
