@@ -5,7 +5,6 @@ import type { CompanySettings } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { useEffect, useState } from 'react'
 
 const empty: CompanySettings = {
@@ -302,9 +301,10 @@ function Field({
   className?: string
 }) {
   return (
-    <div className={className}>
-      <Label className="mb-1.5 block text-xs text-muted-foreground">{label}</Label>
+    // Wrapping <label> links the caption to its input (tap caption = focus, screen readers).
+    <label className={className}>
+      <span className="mb-1.5 block text-xs text-muted-foreground">{label}</span>
       {children}
-    </div>
+    </label>
   )
 }

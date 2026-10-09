@@ -121,7 +121,12 @@ export function SwipeToDelete({
 
   return (
     <div className={cn('group relative overflow-hidden rounded-lg', className)}>
-      <div className="absolute inset-y-0 right-0 z-0 flex w-20 items-stretch">
+      <div
+        className={cn(
+          'absolute inset-y-0 right-0 z-0 flex w-20 items-stretch',
+          offset === 0 && 'invisible'
+        )}
+      >
         <button
           type="button"
           disabled={disabled}

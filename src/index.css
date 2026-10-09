@@ -180,6 +180,26 @@
   animation: slide-in-from-right 0.25s ease-out both;
 }
 
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+}
+.dialog-content[data-state='open'] { animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.dialog-overlay[data-state='open'] { animation: overlay-in 0.2s ease-out; }
+@media (min-width: 40rem) {
+  .dialog-content[data-state='open'] { animation: pop-in 0.18s ease-out; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialog-content, .dialog-overlay { animation: none !important; }
+}
+
 /* Hides scrollbar while preserving scroll functionality (for horizontal scroll strips) */
 .scrollbar-hide {
   scrollbar-width: none;

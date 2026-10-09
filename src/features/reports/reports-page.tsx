@@ -81,7 +81,7 @@ export function ReportsPage() {
   const open = reports.filter((r) => r.status !== 'resolved').length
 
   return (
-    <div className="space-y-5">
+    <div className="flex-1 space-y-5 overflow-auto p-4 sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
@@ -166,7 +166,7 @@ export function ReportsPage() {
                     {formatDate(r.createdAt)}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
                       <StatusChip kind="report" status={r.status} />
                       {isOverdue(r) ? (
                         <span className="text-xs font-medium text-destructive">Overdue</span>

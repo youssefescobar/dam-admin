@@ -13,6 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 const isoDay = (d: Date) => d.toISOString().slice(0, 10)
 const pct = (n: number) => `${Math.round(n * 1000) / 10}%`
 
+// Backend keys are raw snake_case; "null" = message typed without picking a menu topic.
+const humanize = (k: string) =>
+  k === 'null' ? 'Free text' : k.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
+
 function Breakdown({ title, data }: { title: string; data: Record<string, number> }) {
   const rows = Object.entries(data).sort((a, b) => b[1] - a[1])
   return (
@@ -24,7 +28,7 @@ function Breakdown({ title, data }: { title: string; data: Record<string, number
         {rows.length === 0 ? <p className="text-muted-foreground">No data</p> : null}
         {rows.map(([k, n]) => (
           <div key={k} className="flex justify-between">
-            <span>{k}</span>
+            <span>{humanize(k)}</span>
             <span className="font-medium">{n}</span>
           </div>
         ))}
@@ -74,19 +78,21 @@ export function InsightsPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Chats</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-semibold">{s?.conversations ?? '—'}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Handover rate</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-semibold">{s ? pct(s.handoverRate) : '—'}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Miss rate</CardTitle></CardHeader>
-          <CardContent className="text-2xl font-semibold">{s ? pct(s.missRate) : '—'}</CardContent>
-        </Card>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {(
+          [
+            ['Chats', s?.conversations ?? '—'],
+            ['Handover rate', s ? pct(s.handoverRate) : '—'],
+            ['Miss rate', s ? pct(s.missRate) : '—'],
+          ] as const
+        ).map(([label, value]) => (
+          <Card key={label} className="gap-1 py-3 sm:gap-4 sm:py-5">
+            <CardHeader className="px-3 sm:px-6">
+              <CardTitle className="text-xs sm:text-sm">{label}</CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 text-xl font-semibold sm:px-6 sm:text-2xl">{value}</CardContent>
+          </Card>
+        ))}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Breakdown title="Handovers by reason" data={s?.handovers ?? {}} />

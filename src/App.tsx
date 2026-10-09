@@ -1,12 +1,11 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ThemeProvider } from 'next-themes'
+import { ThemeProvider } from '@/lib/theme'
 import { AuthProvider } from '@/features/auth/auth-context'
 import { LoginPage } from '@/features/auth/login-page'
 import { AppShell } from '@/components/layout/app-shell'
 import { QuotesPage } from '@/features/quotes/quotes-page'
 import { InboxPage } from '@/features/chat/inbox-page'
-import { AiPlaygroundPage } from '@/features/ai/ai-playground-page'
 import { KbPage } from '@/features/kb/kb-page'
 import { ReportsPage } from '@/features/reports/reports-page'
 import { InsightsPage } from '@/features/insights/insights-page'
@@ -21,7 +20,7 @@ const queryClient = new QueryClient({
 
 export default function App() {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <BrowserRouter>
@@ -33,7 +32,6 @@ export default function App() {
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/kb" element={<KbPage />} />
                 <Route path="/insights" element={<InsightsPage />} />
-                <Route path="/ai" element={<AiPlaygroundPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/quotes" replace />} />

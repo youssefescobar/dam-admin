@@ -45,7 +45,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { MoreHorizontal, Inbox } from 'lucide-react'
+import { ChevronDown, MoreHorizontal, Inbox } from 'lucide-react'
 import { QuotesTableSkeleton } from '@/components/loading/skeletons'
 import { StatusChip, QUOTE_STATUS_LABEL } from '@/components/ui/status-chip'
 import { cn } from '@/lib/utils'
@@ -56,6 +56,7 @@ const legCountLabel = (q: Quote) =>
 export function QuotesPage() {
   const queryClient = useQueryClient()
   const [status, setStatus] = useState<string>('all')
+  const [showFilters, setShowFilters] = useState(false)
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>('all')
   const [departmentFilter, setDepartmentFilter] = useState<string>('all')
   const [contactFilter, setContactFilter] = useState('')
@@ -268,8 +269,24 @@ export function QuotesPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 items-end gap-3 sm:flex sm:flex-wrap">
-        <div className="space-y-1 sm:w-[160px]">
+      <Button
+        variant="outline"
+        type="button"
+        className="h-11 justify-between md:hidden"
+        aria-expanded={showFilters}
+        onClick={() => setShowFilters((v) => !v)}
+      >
+        Filters
+        <ChevronDown className={cn('size-4 transition-transform', showFilters && 'rotate-180')} />
+      </Button>
+
+      <div
+        className={cn(
+          'grid-cols-2 items-end gap-3 md:grid md:grid-cols-3 xl:grid-cols-4',
+          showFilters ? 'grid' : 'hidden'
+        )}
+      >
+        <div className="min-w-0 space-y-1">
           <div className="text-xs text-muted-foreground">Status</div>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger className="w-full">
@@ -284,7 +301,7 @@ export function QuotesPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1 sm:w-[160px]">
+        <div className="min-w-0 space-y-1">
           <div className="text-xs text-muted-foreground">Customer type</div>
           <Select value={customerTypeFilter} onValueChange={setCustomerTypeFilter}>
             <SelectTrigger className="w-full">
@@ -302,7 +319,7 @@ export function QuotesPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1 sm:w-[160px]">
+        <div className="col-span-2 min-w-0 space-y-1 md:col-span-1">
           <div className="text-xs text-muted-foreground">Department</div>
           <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
             <SelectTrigger className="w-full">
@@ -318,7 +335,7 @@ export function QuotesPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="min-w-0 flex-1 space-y-1 sm:max-w-[220px]">
+        <div className="col-span-2 min-w-0 space-y-1 md:col-span-1">
           <div className="text-xs text-muted-foreground">Name / email</div>
           <Input
             className="w-full"
@@ -330,7 +347,7 @@ export function QuotesPage() {
             autoCorrect="off"
           />
         </div>
-        <div className="min-w-0 flex-1 space-y-1 sm:max-w-[240px]">
+        <div className="col-span-2 min-w-0 space-y-1 md:col-span-1">
           <div className="text-xs text-muted-foreground">Phone</div>
           <PhoneInputField
             className="w-full"
@@ -339,14 +356,14 @@ export function QuotesPage() {
             placeholder="Filter by phone"
           />
         </div>
-        <div className="min-w-0 flex-1 space-y-1 sm:max-w-[280px]">
+        <div className="col-span-2 min-w-0 space-y-1 md:col-span-1">
           <div className="text-xs text-muted-foreground">Trip date range</div>
           <DateRangePicker value={dateRange} onChange={setDateRange} />
         </div>
         <Button
           variant="outline"
           type="button"
-          className="h-11 w-full sm:h-9 sm:w-auto"
+          className="col-span-2 h-11 w-full md:col-span-1 md:h-9"
           onClick={() => {
             setStatus('all')
             setCustomerTypeFilter('all')

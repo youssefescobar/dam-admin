@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import {
   BookOpen,
   BarChart3,
-  Bot,
   ClipboardList,
   Inbox,
   LogOut,
@@ -23,7 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useTheme } from 'next-themes'
+import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-context'
 import { api } from '@/lib/api'
 import type { Conversation } from '@/lib/types'
@@ -41,7 +40,6 @@ const nav = [
   { to: '/reports', label: 'Reports', icon: ClipboardList },
   { to: '/kb', label: 'Knowledge', icon: BookOpen },
   { to: '/insights', label: 'Insights', icon: BarChart3 },
-  { to: '/ai', label: 'Durri chat', icon: Bot },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
