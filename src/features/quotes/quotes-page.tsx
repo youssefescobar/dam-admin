@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   flexRender,
@@ -50,7 +50,7 @@ import { ChevronDown, MoreHorizontal, Inbox, LayoutGrid, List } from 'lucide-rea
 import { QuotesTableSkeleton } from '@/components/loading/skeletons'
 import { StatusChip, QUOTE_STATUS_LABEL } from '@/components/ui/status-chip'
 import { cn, formatSar } from '@/lib/utils'
-import { QuotesBoard } from './quotes-board'
+import { QuotesBoard, ReminderBadge } from './quotes-board'
 
 type View = 'table' | 'board'
 const VIEW_KEY = 'dam-quotes-view'
@@ -106,6 +106,19 @@ export function QuotesPage() {
       return api<{ quotes: Quote[] }>(`/quotes${q ? `?${q}` : ''}`)
     },
   })
+
+  // Reminder notifications link to /quotes?q=<id>: open that quote once it has loaded.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const linkedId = searchParams.get('q')
+  useEffect(() => {
+    if (!linkedId || !query.data) return
+    const linked = query.data.quotes.find((q) => q._id === linkedId)
+    if (linked) openDetail(linked)
+    setSearchParams((p) => {
+      p.delete('q')
+      return p
+    }, { replace: true })
+  }, [linkedId, query.data, openDetail, setSearchParams])
 
   const patchMutation = useMutation({
     mutationFn: async (payload: { id: string; body: Partial<Quote> }) =>
@@ -218,7 +231,12 @@ export function QuotesPage() {
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <StatusChip kind="quote" status={row.original.status} />,
+        cell: ({ row }) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusChip kind="quote" status={row.original.status} />
+            <ReminderBadge quote={row.original} />
+          </div>
+        ),
       },
       {
         accessorKey: 'quotedPrice',
@@ -467,7 +485,10 @@ export function QuotesPage() {
                     {q.customerContact}
                   </div>
                 </div>
-                <StatusChip kind="quote" status={q.status} className="shrink-0" />
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <ReminderBadge quote={q} />
+                  <StatusChip kind="quote" status={q.status} />
+                </div>
               </div>
               <div className="mt-2 text-sm">
                 {q.pickup} → {q.dropoff}

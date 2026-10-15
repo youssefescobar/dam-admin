@@ -24,6 +24,30 @@ const COLUMN_ACCENT: Record<Status, string> = {
 
 const DRAG_TYPE = 'application/x-quote-id'
 
+/** Reminder the backend already sent for this quote, if it still applies. */
+function reminderBadge(q: Quote): { label: string; className: string } | null {
+  if (q.status === 'new' && q.overdueRemindedAt) {
+    return { label: 'Overdue', className: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200' }
+  }
+  if (q.status === 'quoted' && q.followUpRemindedAt) {
+    return {
+      label: 'Follow up',
+      className: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
+    }
+  }
+  return null
+}
+
+export function ReminderBadge({ quote }: { quote: Quote }) {
+  const badge = reminderBadge(quote)
+  if (!badge) return null
+  return (
+    <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', badge.className)}>
+      {badge.label}
+    </span>
+  )
+}
+
 type Props = {
   quotes: Quote[]
   loading?: boolean
@@ -174,6 +198,7 @@ function BoardCard({
         {q.quotedPrice != null ? (
           <span className="font-medium text-foreground">{formatSar(q.quotedPrice)}</span>
         ) : null}
+        <ReminderBadge quote={q} />
         {q.staffNotes ? (
           <StickyNote className="size-3.5" aria-label="Has staff notes" />
         ) : null}
