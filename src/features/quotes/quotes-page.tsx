@@ -48,7 +48,7 @@ import { Label } from '@/components/ui/label'
 import { ChevronDown, MoreHorizontal, Inbox } from 'lucide-react'
 import { QuotesTableSkeleton } from '@/components/loading/skeletons'
 import { StatusChip, QUOTE_STATUS_LABEL } from '@/components/ui/status-chip'
-import { cn } from '@/lib/utils'
+import { cn, formatSar } from '@/lib/utils'
 
 const legCountLabel = (q: Quote) =>
   q.legs && q.legs.length > 1 ? `${q.legs.length} legs` : ''
@@ -196,7 +196,7 @@ export function QuotesPage() {
         accessorKey: 'quotedPrice',
         header: 'Price',
         cell: ({ row }) =>
-          row.original.quotedPrice != null ? `$${row.original.quotedPrice}` : '—',
+          row.original.quotedPrice != null ? formatSar(row.original.quotedPrice) : '—',
       },
       {
         id: 'actions',
@@ -421,7 +421,7 @@ export function QuotesPage() {
                 <span>{new Date(q.date).toLocaleString()}</span>
                 <span>{q.vehicleType}</span>
                 <span>
-                  {q.quotedPrice != null ? `$${q.quotedPrice}` : 'No price yet'}
+                  {q.quotedPrice != null ? formatSar(q.quotedPrice) : 'No price yet'}
                 </span>
               </div>
             </button>
@@ -659,7 +659,7 @@ export function QuotesPage() {
                 </div>
               ) : null}
               <div className="space-y-1.5">
-                <Label htmlFor="quote-price">Quoted price</Label>
+                <Label htmlFor="quote-price">Quoted price (SAR)</Label>
                 <div className="flex gap-2">
                   <Input
                     id="quote-price"
