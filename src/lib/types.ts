@@ -159,3 +159,32 @@ export type ChatAnalytics = {
   handovers: Record<string, number>
   topics: Record<string, number>
 }
+
+export type ContentKind = 'news' | 'career' | 'testimonial'
+
+/** One language of a website content item; which fields matter depends on the kind. */
+export type ContentText = {
+  title?: string
+  excerpt?: string
+  body?: string
+  location?: string
+  type?: string
+  summary?: string
+  quote?: string
+  name?: string
+  role?: string
+}
+
+export type SiteContentItem = {
+  _id: string
+  kind: ContentKind
+  published: boolean
+  slug?: string
+  image?: string
+  publishedAt?: string | null
+  sortOrder?: number
+  en: ContentText
+  ar: ContentText
+  createdAt?: string
+  updatedAt?: string
+}

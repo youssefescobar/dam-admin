@@ -5,6 +5,7 @@ import {
   BookOpen,
   BarChart3,
   ClipboardList,
+  Globe,
   Inbox,
   LogOut,
   Moon,
@@ -39,6 +40,7 @@ const nav = [
   { to: '/inbox', label: 'Inbox', icon: Inbox, badgeKey: 'inbox' as const },
   { to: '/reports', label: 'Reports', icon: ClipboardList },
   { to: '/kb', label: 'Knowledge', icon: BookOpen },
+  { to: '/content', label: 'Website', icon: Globe },
   { to: '/insights', label: 'Insights', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
