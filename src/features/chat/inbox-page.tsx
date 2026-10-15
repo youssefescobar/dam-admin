@@ -25,7 +25,7 @@ import { ArrowLeft, MessageCircle } from 'lucide-react'
 
 const SENDER_LABEL: Record<string, string> = {
   customer: 'Customer',
-  ai: 'Durri',
+  ai: 'Durra AI',
   admin: 'Agent',
   system: 'System',
 }

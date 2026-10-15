@@ -120,7 +120,7 @@ export type CompanySettings = {
 
 export type ReportStatus = 'new' | 'in_progress' | 'resolved'
 
-/** A complaint or lost-item report logged by Durri in the chat. */
+/** A complaint or lost-item report logged by Durra AI in the chat. */
 export type Report = {
   _id: string
   type: 'complaint' | 'lost_found'
