@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -45,10 +45,23 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import { ChevronDown, MoreHorizontal, Inbox } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { ChevronDown, MoreHorizontal, Inbox, LayoutGrid, List } from 'lucide-react'
 import { QuotesTableSkeleton } from '@/components/loading/skeletons'
 import { StatusChip, QUOTE_STATUS_LABEL } from '@/components/ui/status-chip'
 import { cn, formatSar } from '@/lib/utils'
+import { QuotesBoard } from './quotes-board'
+
+type View = 'table' | 'board'
+const VIEW_KEY = 'dam-quotes-view'
+
+const loadView = (): View => {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'board' ? 'board' : 'table'
+  } catch {
+    return 'table'
+  }
+}
 
 const legCountLabel = (q: Quote) =>
   q.legs && q.legs.length > 1 ? `${q.legs.length} legs` : ''
@@ -64,6 +77,23 @@ export function QuotesPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [detail, setDetail] = useState<Quote | null>(null)
   const [priceDraft, setPriceDraft] = useState('')
+  const [notesDraft, setNotesDraft] = useState('')
+  const [view, setViewState] = useState<View>(loadView)
+
+  const setView = (next: View) => {
+    setViewState(next)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      /* private mode */
+    }
+  }
+
+  const openDetail = useCallback((q: Quote) => {
+    setDetail(q)
+    setPriceDraft(q.quotedPrice != null ? String(q.quotedPrice) : '')
+    setNotesDraft(q.staffNotes ?? '')
+  }, [])
 
   const query = useQuery({
     queryKey: ['quotes', status, customerTypeFilter, departmentFilter],
@@ -86,7 +116,8 @@ export function QuotesPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] })
       toast.success('Quote saved')
-      setDetail(data.quote)
+      // Refresh the open dialog only; board moves must not pop it open.
+      setDetail((d) => (d && d._id === data.quote._id ? data.quote : d))
     },
     onError: (err: Error) => toast.error(err.message),
   })
@@ -126,10 +157,7 @@ export function QuotesPage() {
             type="button"
             className="text-left hover:underline"
             onClick={() => {
-              setDetail(row.original)
-              setPriceDraft(
-                row.original.quotedPrice != null ? String(row.original.quotedPrice) : ''
-              )
+              openDetail(row.original)
             }}
           >
             <div className="font-medium">{row.original.customerName}</div>
@@ -211,10 +239,7 @@ export function QuotesPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() => {
-                  setDetail(row.original)
-                  setPriceDraft(
-                    row.original.quotedPrice != null ? String(row.original.quotedPrice) : ''
-                  )
+                  openDetail(row.original)
                 }}
               >
                 View details
@@ -243,7 +268,7 @@ export function QuotesPage() {
         ),
       },
     ],
-    [patchMutation]
+    [patchMutation, openDetail]
   )
 
   const table = useReactTable({
@@ -261,12 +286,36 @@ export function QuotesPage() {
             New transfer requests — review, price, and close the loop.
           </p>
         </div>
-        {!query.isLoading && (
-          <p className="text-xs text-muted-foreground">
-            {filtered.length} shown
-            {status !== 'all' ? ` · ${QUOTE_STATUS_LABEL[status] || status}` : ''}
-          </p>
-        )}
+        <div className="flex items-center gap-3">
+          {!query.isLoading && (
+            <p className="text-xs text-muted-foreground">
+              {filtered.length} shown
+              {status !== 'all' ? ` · ${QUOTE_STATUS_LABEL[status] || status}` : ''}
+            </p>
+          )}
+          <div className="inline-flex rounded-lg border p-0.5" role="group" aria-label="View">
+            {(
+              [
+                ['table', List, 'Table'],
+                ['board', LayoutGrid, 'Board'],
+              ] as const
+            ).map(([value, Icon, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={view === value}
+                onClick={() => setView(value)}
+                className={cn(
+                  'inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors',
+                  view === value && 'bg-muted text-foreground'
+                )}
+              >
+                <Icon className="size-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <Button
@@ -377,10 +426,20 @@ export function QuotesPage() {
         </Button>
       </div>
 
+      {view === 'board' ? (
+        <QuotesBoard
+          quotes={filtered}
+          loading={query.isLoading}
+          onOpen={openDetail}
+          onMove={(q, next) => patchMutation.mutate({ id: q._id, body: { status: next } })}
+        />
+      ) : null}
+
       {/* Mobile: tappable cards */}
       <div
         className={cn(
           'space-y-2 md:hidden',
+          view === 'board' && 'hidden',
           query.isFetching && !query.isLoading && 'opacity-60'
         )}
       >
@@ -398,8 +457,7 @@ export function QuotesPage() {
               type="button"
               className="animate-fade-in w-full rounded-xl border bg-card p-3.5 text-left active:bg-muted/50"
               onClick={() => {
-                setDetail(q)
-                setPriceDraft(q.quotedPrice != null ? String(q.quotedPrice) : '')
+                openDetail(q)
               }}
             >
               <div className="flex items-start justify-between gap-2">
@@ -440,7 +498,8 @@ export function QuotesPage() {
       {/* Desktop: table */}
       <div
         className={cn(
-          'hidden overflow-x-auto rounded-xl border bg-card transition-opacity duration-200 md:block',
+          'hidden overflow-x-auto rounded-xl border bg-card transition-opacity duration-200',
+          view === 'table' && 'md:block',
           query.isFetching && !query.isLoading && 'opacity-60'
         )}
       >
@@ -654,10 +713,34 @@ export function QuotesPage() {
               </div>
               {detail.notes ? (
                 <div>
-                  <div className="text-xs text-muted-foreground">Notes</div>
+                  <div className="text-xs text-muted-foreground">Customer notes</div>
                   <p className="whitespace-pre-wrap">{detail.notes}</p>
                 </div>
               ) : null}
+              <div className="space-y-1.5">
+                <Label htmlFor="quote-staff-notes">Staff notes (internal)</Label>
+                <Textarea
+                  id="quote-staff-notes"
+                  rows={3}
+                  maxLength={4000}
+                  placeholder="Calls, follow-ups, what the customer said… never shown to them."
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                />
+                {notesDraft !== (detail.staffNotes ?? '') ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={patchMutation.isPending}
+                    onClick={() =>
+                      patchMutation.mutate({ id: detail._id, body: { staffNotes: notesDraft } })
+                    }
+                  >
+                    Save notes
+                  </Button>
+                ) : null}
+              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="quote-price">Quoted price (SAR)</Label>
                 <div className="flex gap-2">

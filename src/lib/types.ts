@@ -15,6 +15,8 @@ export type Quote = {
   vehicleType: string
   passengers: number
   notes?: string
+  /** Internal notes, never shown to the customer. */
+  staffNotes?: string
   status: 'new' | 'quoted' | 'won' | 'lost'
   quotedPrice: number | null
   conversationId?: string
