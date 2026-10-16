@@ -44,6 +44,26 @@ export function useLiveAlerts(enabled: boolean) {
       })
     }
 
+    const onQuoteReminder = (payload: {
+      kind?: 'overdue' | 'follow_up'
+      quote?: { _id?: string; customerName?: string; leadId?: string }
+    }) => {
+      void queryClient.invalidateQueries({ queryKey: ['quotes'] })
+      const q = payload.quote
+      const who = [q?.leadId, q?.customerName?.trim()].filter(Boolean).join(' · ')
+      toast.warning(payload.kind === 'overdue' ? 'Quote waiting too long' : 'Time to follow up', {
+        description:
+          (who ? who + ': ' : '') +
+          (payload.kind === 'overdue'
+            ? 'still has no price past the reply SLA.'
+            : 'no decision since it was quoted.'),
+        action: {
+          label: 'Open',
+          onClick: () => navigate(q?._id ? `/quotes?q=${q._id}` : '/quotes'),
+        },
+      })
+    }
+
     const onEscalated = (payload: {
       conversationId?: string
       customerName?: string
@@ -124,12 +144,14 @@ export function useLiveAlerts(enabled: boolean) {
     }
 
     socket.on('quote:new', onQuote)
+    socket.on('quote:reminder', onQuoteReminder)
     socket.on('report:new', onReport)
     socket.on('conversation:escalated', onEscalated)
     socket.on('conversation:customer_message', onCustomerMessage)
 
     return () => {
       socket.off('quote:new', onQuote)
+      socket.off('quote:reminder', onQuoteReminder)
       socket.off('report:new', onReport)
       socket.off('conversation:escalated', onEscalated)
       socket.off('conversation:customer_message', onCustomerMessage)

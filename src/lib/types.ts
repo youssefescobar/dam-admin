@@ -17,6 +17,11 @@ export type Quote = {
   notes?: string
   /** Internal notes, never shown to the customer. */
   staffNotes?: string
+  quotedAt?: string | null
+  /** Set by the backend once the reply-SLA reminder fired. */
+  overdueRemindedAt?: string | null
+  /** Set by the backend once the follow-up reminder fired. */
+  followUpRemindedAt?: string | null
   status: 'new' | 'quoted' | 'won' | 'lost'
   quotedPrice: number | null
   conversationId?: string
@@ -109,6 +114,8 @@ export type CompanySettings = {
   cancellationPolicy: string
   childFareNote: string
   quoteSlaHours: number
+  /** Days after quoting before staff get a follow-up reminder (0 = off). */
+  quoteFollowUpDays: number
   complaintSlaHours: number
   botGreetingEn: string
   botGreetingAr: string

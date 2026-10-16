@@ -22,6 +22,7 @@ const empty: CompanySettings = {
   cancellationPolicy: '',
   childFareNote: '',
   quoteSlaHours: 24,
+  quoteFollowUpDays: 3,
   complaintSlaHours: 48,
   botGreetingEn: '',
   botGreetingAr: '',
@@ -78,6 +79,7 @@ export function SettingsPage() {
       cancellationPolicy: form.cancellationPolicy,
       childFareNote: form.childFareNote,
       quoteSlaHours: Number(form.quoteSlaHours) || 24,
+      quoteFollowUpDays: Math.max(0, Number(form.quoteFollowUpDays) || 0),
       complaintSlaHours: Number(form.complaintSlaHours) || 48,
       botGreetingEn: form.botGreetingEn,
       botGreetingAr: form.botGreetingAr,
@@ -211,6 +213,14 @@ export function SettingsPage() {
               min={1}
               value={form.quoteSlaHours}
               onChange={(e) => set('quoteSlaHours', Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Follow up quoted leads after (days, 0 = off)">
+            <Input
+              type="number"
+              min={0}
+              value={form.quoteFollowUpDays}
+              onChange={(e) => set('quoteFollowUpDays', Number(e.target.value))}
             />
           </Field>
           <Field label="Complaint SLA (hours)">
