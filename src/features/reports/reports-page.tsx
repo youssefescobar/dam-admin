@@ -88,7 +88,7 @@ export function ReportsPage() {
             <ClipboardList className="size-5" /> Reports
           </h1>
           <p className="text-sm text-muted-foreground">
-            Complaints and lost items logged by Durri. {open} open.
+            Complaints and lost items logged by Durra AI. {open} open.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

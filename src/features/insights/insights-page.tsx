@@ -67,9 +67,9 @@ export function InsightsPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <BarChart3 className="size-5" /> Durri insights
+            <BarChart3 className="size-5" /> Durra AI insights
           </h1>
-          <p className="text-sm text-muted-foreground">How often Durri hands over or cannot answer.</p>
+          <p className="text-sm text-muted-foreground">How often Durra AI hands over or cannot answer.</p>
         </div>
         <div className="flex items-center gap-2">
           <Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="w-40" />

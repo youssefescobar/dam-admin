@@ -403,7 +403,7 @@ export function KbPage() {
             </div>
             {missingTwin(selected) ? (
               <p className="border-b bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                No {missingTwin(selected)} version of this entry (same source ID). Durri may answer less well
+                No {missingTwin(selected)} version of this entry (same source ID). Durra AI may answer less well
                 in that language.
               </p>
             ) : null}

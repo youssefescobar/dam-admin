@@ -11,7 +11,7 @@ export const CONVERSATION_STATUS_LABEL: Record<string, string> = {
   needs_human: 'Needs you',
   mine: 'Mine',
   claimed: 'Claimed',
-  ai_handling: 'With Durri',
+  ai_handling: 'With Durra AI',
   closed: 'Closed',
 }
 
