@@ -84,13 +84,19 @@ function ConversationThread({
 
   useEffect(() => {
     const socket = connectAdminSocket()
-    const onNew = (payload: { sender?: string; text?: string; conversationId?: string }) => {
-      if (payload.conversationId && payload.conversationId !== conversationId) return
-      if (!payload.text) return
-      setLocalMessages((prev) => [
+    const onNew = (payload: {
+      sender?: string
+      text?: string
+      conversationId?: string
+      messageId?: string
+    }) => {
+      // The socket stays in every room this agent opened; only this thread's messages belong here.
+      if (payload.conversationId !== conversationId || !payload.text) return
+      const id = payload.messageId || `live-${Date.now()}`
+      setLocalMessages((prev) => prev.some((m) => m._id === id) ? prev : [
         ...prev,
         {
-          _id: `live-${Date.now()}`,
+          _id: id,
           conversationId,
           sender: (payload.sender as ChatMessage['sender']) || 'system',
           text: payload.text!,
@@ -121,8 +127,10 @@ function ConversationThread({
               reject(new Error(ack?.error || 'Send failed'))
               return
             }
-            if (ack.message) {
-              setLocalMessages((prev) => [...prev, ack.message!])
+            const sent = ack.message
+            if (sent) {
+              // The room broadcast of the same message may have arrived first.
+              setLocalMessages((prev) => prev.some((m) => m._id === sent._id) ? prev : [...prev, sent])
             }
             resolve()
           }
@@ -332,7 +340,18 @@ export function InboxPage() {
     onError: (err: Error) => toast.error(err.message),
   })
 
-  const selected = listQuery.data?.conversations.find((c) => c._id === selectedId)
+  // A deep-linked chat may sit under another filter; fall back to the thread's own fetch.
+  const threadQuery = useQuery({
+    queryKey: ['messages', selectedId],
+    queryFn: () =>
+      api<{ conversation: Conversation; messages: ChatMessage[] }>(
+        `/conversations/${selectedId}/messages`
+      ),
+    enabled: Boolean(selectedId),
+  })
+  const selected =
+    listQuery.data?.conversations.find((c) => c._id === selectedId) ??
+    (threadQuery.data?.conversation._id === selectedId ? threadQuery.data.conversation : undefined)
   const canReply =
     selected?.status === 'claimed' &&
     (!selected.assignedAdminId || String(selected.assignedAdminId) === String(admin?.id))
