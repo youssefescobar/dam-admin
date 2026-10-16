@@ -9,6 +9,7 @@ import { InboxPage } from '@/features/chat/inbox-page'
 import { KbPage } from '@/features/kb/kb-page'
 import { ReportsPage } from '@/features/reports/reports-page'
 import { InsightsPage } from '@/features/insights/insights-page'
+import { ContentPage } from '@/features/content/content-page'
 import { SettingsPage } from '@/features/settings/settings-page'
 import { Toaster } from '@/components/ui/sonner'
 
@@ -32,6 +33,7 @@ export default function App() {
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/kb" element={<KbPage />} />
                 <Route path="/insights" element={<InsightsPage />} />
+                <Route path="/content" element={<ContentPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/quotes" replace />} />
