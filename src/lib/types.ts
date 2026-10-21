@@ -137,10 +137,10 @@ export type ReportAttachment = {
   contentType: string
 }
 
-/** A complaint or job application logged by Durra AI in the chat (older reports may be `lost_found`). */
+/** A complaint or job application logged by Durra AI in the chat. */
 export type Report = {
   _id: string
-  type: 'complaint' | 'career' | 'lost_found'
+  type: 'complaint' | 'career'
   refNumber: string
   customerId?: string
   conversationId?: string | null
