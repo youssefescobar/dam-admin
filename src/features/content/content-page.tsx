@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff, Globe, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, Globe, ImageIcon, Loader2, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { api, ApiError } from '@/lib/api'
+import { api, ApiError, uploadFile } from '@/lib/api'
 import type { ContentKind, ContentText, SiteContentItem } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,19 +40,7 @@ const KINDS: {
       { key: 'excerpt', label: 'Short summary', multiline: true, rows: 2 },
       { key: 'body', label: 'Article', multiline: true, rows: 8 },
     ],
-    image: 'Cover image URL',
-  },
-  {
-    kind: 'career',
-    label: 'Careers',
-    singular: 'open role',
-    hint: 'Shown on the Careers page. Unpublish a role once it is filled.',
-    fields: [
-      { key: 'title', label: 'Job title' },
-      { key: 'location', label: 'Location' },
-      { key: 'type', label: 'Type (e.g. Full-time)' },
-      { key: 'summary', label: 'Summary', multiline: true, rows: 4 },
-    ],
+    image: 'Cover image',
   },
   {
     kind: 'testimonial',
@@ -64,7 +52,7 @@ const KINDS: {
       { key: 'name', label: 'Name' },
       { key: 'role', label: 'Role / organisation' },
     ],
-    image: 'Photo URL (optional)',
+    image: 'Photo (optional)',
   },
 ]
 
@@ -108,6 +96,71 @@ const slugify = (text: string) =>
 const headline = (kind: ContentKind, item: SiteContentItem) => {
   const key = kind === 'testimonial' ? 'quote' : 'title'
   return item.en?.[key] || item.ar?.[key] || 'Untitled'
+}
+
+/** Upload an image from the computer, or paste a link. Shows a preview once set. */
+function ImageField({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false)
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return
+    setUploading(true)
+    try {
+      onChange(await uploadFile(file))
+      toast.success('Image uploaded')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-1.5 sm:col-span-2">
+      <Label htmlFor="content-image">{label}</Label>
+      <div className="flex items-start gap-3">
+        {value ? (
+          <img src={value} alt="" className="size-20 shrink-0 rounded-lg border bg-muted object-cover" />
+        ) : (
+          <div className="flex size-20 shrink-0 items-center justify-center rounded-lg border border-dashed text-muted-foreground">
+            <ImageIcon className="size-6 opacity-50" />
+          </div>
+        )}
+        <div className="grid min-w-0 flex-1 gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={uploading} asChild>
+              <label className="cursor-pointer">
+                {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                {uploading ? 'Uploading…' : value ? 'Replace image' : 'Upload image'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                  className="sr-only"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    void pick(e.target.files?.[0])
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            </Button>
+            {value ? (
+              <Button type="button" variant="ghost" size="sm" disabled={uploading} onClick={() => onChange('')}>
+                <X className="size-4" />
+                Remove
+              </Button>
+            ) : null}
+          </div>
+          <Input
+            id="content-image"
+            value={value}
+            placeholder="…or paste an image link (https://…)"
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function ContentPage() {
@@ -249,9 +302,6 @@ export function ContentPage() {
                   {item.published ? 'Live' : 'Draft'}
                 </span>
                 {kind === 'news' && item.slug ? <span className="font-mono">/news/{item.slug}</span> : null}
-                {kind === 'career' && (item.en?.location || item.ar?.location) ? (
-                  <span>{item.en?.location || item.ar?.location}</span>
-                ) : null}
                 {kind === 'testimonial' && (item.en?.name || item.ar?.name) ? (
                   <span>{item.en?.name || item.ar?.name}</span>
                 ) : null}
@@ -366,15 +416,11 @@ export function ContentPage() {
                   </div>
                 )}
                 {meta.image ? (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="content-image">{meta.image}</Label>
-                    <Input
-                      id="content-image"
-                      value={draft.image}
-                      placeholder="https://…"
-                      onChange={(e) => setDraft({ ...draft, image: e.target.value })}
-                    />
-                  </div>
+                  <ImageField
+                    label={meta.image}
+                    value={draft.image}
+                    onChange={(image) => setDraft((d) => (d ? { ...d, image } : d))}
+                  />
                 ) : null}
               </div>
 

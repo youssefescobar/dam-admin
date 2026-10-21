@@ -50,6 +50,18 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   return data as T
 }
 
+/** Upload a file straight to storage (Cloudflare R2) and return its public URL. */
+export async function uploadFile(file: File): Promise<string> {
+  const { uploadUrl, headers, url } = await api<{
+    uploadUrl: string
+    headers: Record<string, string>
+    url: string
+  }>('/uploads', { method: 'POST', body: { contentType: file.type, size: file.size } })
+  const res = await fetch(uploadUrl, { method: 'PUT', headers, body: file })
+  if (!res.ok) throw new ApiError(res.status, 'Upload failed, please try again')
+  return url
+}
+
 export function apiBaseUrl() {
   return API_BASE || window.location.origin
 }
