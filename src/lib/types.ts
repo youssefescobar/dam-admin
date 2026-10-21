@@ -129,10 +129,18 @@ export type CompanySettings = {
 
 export type ReportStatus = 'new' | 'in_progress' | 'resolved'
 
-/** A complaint or lost-item report logged by Durra AI in the chat. */
+/** A file the customer attached in chat (private bucket key). */
+export type ReportAttachment = {
+  field: string
+  key: string
+  name: string
+  contentType: string
+}
+
+/** A complaint or job application logged by Durra AI in the chat (older reports may be `lost_found`). */
 export type Report = {
   _id: string
-  type: 'complaint' | 'lost_found'
+  type: 'complaint' | 'career' | 'lost_found'
   refNumber: string
   customerId?: string
   conversationId?: string | null
@@ -143,6 +151,9 @@ export type Report = {
   incidentTime?: string
   seat?: string
   description?: string
+  /** Job applications: the role or field applied for. */
+  position?: string
+  attachments?: ReportAttachment[]
   status: ReportStatus
   slaHours?: number | null
   createdAt?: string

@@ -129,15 +129,15 @@ export function useLiveAlerts(enabled: boolean) {
     }
 
     const onReport = (payload: {
-      report?: { type?: string; refNumber?: string; name?: string; tripNumber?: string }
+      report?: { type?: string; refNumber?: string; name?: string; tripNumber?: string; position?: string }
     }) => {
       void queryClient.invalidateQueries({ queryKey: ['reports'] })
       const r = payload.report
-      const kind = r?.type === 'lost_found' ? 'lost item' : 'complaint'
+      const kind = r?.type === 'career' ? 'job application' : 'complaint'
       const title = r?.refNumber ? 'New ' + kind + ' · ' + r.refNumber : 'New ' + kind
       toast(title, {
         description:
-          [r?.name, r?.tripNumber ? 'trip ' + r.tripNumber : ''].filter(Boolean).join(' · ') ||
+          [r?.name, r?.tripNumber ? 'trip ' + r.tripNumber : '', r?.position].filter(Boolean).join(' · ') ||
           'Open Reports to review it.',
         action: { label: 'View', onClick: () => navigate('/reports') },
       })

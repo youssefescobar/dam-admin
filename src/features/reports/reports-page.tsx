@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ClipboardList, MessageSquare } from 'lucide-react'
+import { ClipboardList, Download, MessageSquare } from 'lucide-react'
 import { api } from '@/lib/api'
-import type { Report, ReportStatus } from '@/lib/types'
+import type { Report, ReportAttachment, ReportStatus } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -44,6 +44,21 @@ function isOverdue(report: Report) {
   if (report.status === 'resolved' || !report.slaHours || !report.createdAt) return false
   const due = new Date(report.createdAt).getTime() + report.slaHours * 3600 * 1000
   return Date.now() > due
+}
+
+const FIELD_LABEL: Record<string, string> = { cv: 'CV', photo: 'Photo' }
+
+/** Ask the backend for a short-lived link and download the file (it's sent as an attachment). */
+async function downloadAttachment(file: ReportAttachment) {
+  try {
+    const { url } = await api<{ url: string }>(`/uploads/private?key=${encodeURIComponent(file.key)}`)
+    const a = document.createElement('a')
+    a.href = url
+    a.rel = 'noopener'
+    a.click()
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : 'Could not open the file')
+  }
 }
 
 export function ReportsPage() {
@@ -88,7 +103,7 @@ export function ReportsPage() {
             <ClipboardList className="size-5" /> Reports
           </h1>
           <p className="text-sm text-muted-foreground">
-            Complaints and lost items logged by Durra AI. {open} open.
+            Complaints and job applications logged by Durra AI. {open} open.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -99,7 +114,7 @@ export function ReportsPage() {
             <SelectContent>
               <SelectItem value="all">All types</SelectItem>
               <SelectItem value="complaint">Complaints</SelectItem>
-              <SelectItem value="lost_found">Lost items</SelectItem>
+              <SelectItem value="career">Job applications</SelectItem>
             </SelectContent>
           </Select>
           <Select value={status} onValueChange={setStatus}>
@@ -125,7 +140,7 @@ export function ReportsPage() {
               <TableHead>Reference</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Customer</TableHead>
-              <TableHead className="hidden md:table-cell">Trip</TableHead>
+              <TableHead className="hidden md:table-cell">Trip / role</TableHead>
               <TableHead className="hidden lg:table-cell">Logged</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
@@ -159,8 +174,10 @@ export function ReportsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    <div>{r.tripNumber || '—'}</div>
-                    <div className="text-xs text-muted-foreground">{r.incidentDate}</div>
+                    <div>{r.type === 'career' ? r.position || '—' : r.tripNumber || '—'}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {r.type === 'career' ? (r.attachments?.length ? 'CV attached' : '') : r.incidentDate}
+                    </div>
                   </TableCell>
                   <TableCell className="hidden text-sm lg:table-cell">
                     {formatDate(r.createdAt)}
@@ -202,20 +219,42 @@ export function ReportsPage() {
                 <dd dir="ltr" className="text-left">
                   {detail.phone || '—'}
                 </dd>
-                <dt className="text-muted-foreground">Trip / bus</dt>
-                <dd>{detail.tripNumber || '—'}</dd>
-                <dt className="text-muted-foreground">Date</dt>
-                <dd>{[detail.incidentDate, detail.incidentTime].filter(Boolean).join(' · ') || '—'}</dd>
-                {detail.type === 'lost_found' ? (
+                {detail.type === 'career' ? (
                   <>
-                    <dt className="text-muted-foreground">Seat</dt>
-                    <dd>{detail.seat || '—'}</dd>
+                    <dt className="text-muted-foreground">Applying for</dt>
+                    <dd dir="auto">{detail.position || '—'}</dd>
                   </>
-                ) : null}
-                <dt className="text-muted-foreground">Details</dt>
-                <dd className="whitespace-pre-wrap" dir="auto">
-                  {detail.description || '—'}
-                </dd>
+                ) : (
+                  <>
+                    <dt className="text-muted-foreground">Trip / bus</dt>
+                    <dd>{detail.tripNumber || '—'}</dd>
+                    <dt className="text-muted-foreground">Date</dt>
+                    <dd>{[detail.incidentDate, detail.incidentTime].filter(Boolean).join(' · ') || '—'}</dd>
+                    {detail.seat ? (
+                      <>
+                        <dt className="text-muted-foreground">Seat</dt>
+                        <dd>{detail.seat}</dd>
+                      </>
+                    ) : null}
+                    <dt className="text-muted-foreground">Details</dt>
+                    <dd className="whitespace-pre-wrap" dir="auto">
+                      {detail.description || '—'}
+                    </dd>
+                  </>
+                )}
+                {detail.attachments?.map((file) => (
+                  <Fragment key={file.key}>
+                    <dt className="text-muted-foreground">{FIELD_LABEL[file.field] || 'File'}</dt>
+                    <dd className="flex min-w-0 items-center gap-2">
+                      <span className="truncate" dir="auto" title={file.name}>
+                        {file.name}
+                      </span>
+                      <Button size="sm" variant="outline" className="shrink-0" onClick={() => void downloadAttachment(file)}>
+                        <Download className="mr-1 size-3.5" /> Download
+                      </Button>
+                    </dd>
+                  </Fragment>
+                ))}
               </dl>
 
               <DialogFooter className="flex-wrap gap-2 sm:justify-between">

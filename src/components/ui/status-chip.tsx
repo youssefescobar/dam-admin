@@ -23,6 +23,7 @@ export const REPORT_STATUS_LABEL: Record<string, string> = {
 
 export const REPORT_TYPE_LABEL: Record<string, string> = {
   complaint: 'Complaint',
+  career: 'Job application',
   lost_found: 'Lost item',
 }
 
