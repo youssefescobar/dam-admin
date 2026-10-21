@@ -50,8 +50,32 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   return data as T
 }
 
+/**
+ * Shrink a photo before upload: longest side 2000px, re-encoded as WebP (~80% quality).
+ * A phone photo goes from ~5 MB to a few hundred KB. GIFs keep their animation; if the
+ * browser can't encode WebP or the result isn't smaller, the original is kept.
+ */
+async function shrinkImage(file: File): Promise<File> {
+  if (!/^image\/(jpeg|png|webp|avif)$/.test(file.type)) return file
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bitmap.width * scale)
+    canvas.height = Math.round(bitmap.height * scale)
+    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close()
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/webp', 0.8))
+    if (!blob || blob.type !== 'image/webp' || blob.size >= file.size) return file
+    return new File([blob], file.name.replace(/\.\w+$/, '.webp'), { type: 'image/webp' })
+  } catch {
+    return file
+  }
+}
+
 /** Upload a file straight to storage (Cloudflare R2) and return its public URL. */
-export async function uploadFile(file: File): Promise<string> {
+export async function uploadFile(original: File): Promise<string> {
+  const file = await shrinkImage(original)
   const { uploadUrl, headers, url } = await api<{
     uploadUrl: string
     headers: Record<string, string>

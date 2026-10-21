@@ -187,6 +187,8 @@ export type SiteContentItem = {
   published: boolean
   slug?: string
   image?: string
+  /** News only: images/videos in order; the first is the cover. */
+  media?: string[]
   publishedAt?: string | null
   sortOrder?: number
   en: ContentText

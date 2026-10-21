@@ -42,7 +42,6 @@ const KINDS: {
       { key: 'excerpt', label: 'Short summary', multiline: true, rows: 2 },
       { key: 'body', label: 'Article', multiline: true, rows: 8 },
     ],
-    image: 'Cover image or video',
   },
   {
     kind: 'testimonial',
@@ -63,6 +62,7 @@ type Draft = {
   published: boolean
   slug: string
   image: string
+  media: string[]
   sortOrder: number
   en: ContentText
   ar: ContentText
@@ -72,6 +72,7 @@ const emptyDraft = (): Draft => ({
   published: false,
   slug: '',
   image: '',
+  media: [],
   sortOrder: 0,
   en: {},
   ar: {},
@@ -82,6 +83,7 @@ const toDraft = (item: SiteContentItem): Draft => ({
   published: item.published,
   slug: item.slug || '',
   image: item.image || '',
+  media: item.media?.length ? item.media : item.image ? [item.image] : [],
   sortOrder: item.sortOrder || 0,
   en: { ...item.en },
   ar: { ...item.ar },
@@ -98,6 +100,116 @@ const slugify = (text: string) =>
 const headline = (kind: ContentKind, item: SiteContentItem) => {
   const key = kind === 'testimonial' ? 'quote' : 'title'
   return item.en?.[key] || item.ar?.[key] || 'Untitled'
+}
+
+const MEDIA_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm'
+const MAX_MEDIA = 12
+
+function Thumb({ url }: { url: string }) {
+  return isVideo(url) ? (
+    <video src={url} muted playsInline preload="metadata" className="size-full object-cover" />
+  ) : (
+    <img src={url} alt="" className="size-full object-cover" />
+  )
+}
+
+/** News: several images/videos. The first is the cover; the rest show under the article. */
+function MediaList({ value, onChange }: { value: string[]; onChange: (urls: string[]) => void }) {
+  const [uploading, setUploading] = useState(0)
+  const [link, setLink] = useState('')
+
+  const pick = async (files: File[]) => {
+    const room = MAX_MEDIA - value.length
+    if (files.length > room) toast.error(`Up to ${MAX_MEDIA} files per post`)
+    let urls = value
+    for (const file of files.slice(0, Math.max(room, 0))) {
+      setUploading((n) => n + 1)
+      try {
+        urls = [...urls, await uploadFile(file)]
+        onChange(urls)
+      } catch (err) {
+        toast.error(`${file.name}: ${err instanceof Error ? err.message : 'Upload failed'}`)
+      } finally {
+        setUploading((n) => n - 1)
+      }
+    }
+  }
+
+  const move = (from: number, to: number) => {
+    const next = [...value]
+    next.splice(to, 0, ...next.splice(from, 1))
+    onChange(next)
+  }
+
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <Label>Photos and videos</Label>
+      <p className="text-xs text-muted-foreground">
+        The first one is the cover; the others show under the article. Photos are shrunk automatically. Videos up to 100 MB.
+      </p>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {value.map((url, i) => (
+          <div key={url + i} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
+            <Thumb url={url} />
+            {i === 0 ? (
+              <span className="absolute start-1 top-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold">Cover</span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => move(i, 0)}
+                className="absolute start-1 top-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium"
+              >
+                Make cover
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label="Remove"
+              onClick={() => onChange(value.filter((_, j) => j !== i))}
+              className="absolute end-1 top-1 rounded-full bg-background/90 p-1"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        ))}
+        {Array.from({ length: uploading }).map((_, i) => (
+          <div key={`up-${i}`} className="flex aspect-square animate-pulse items-center justify-center rounded-lg border bg-muted">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </div>
+        ))}
+        {value.length + uploading < MAX_MEDIA ? (
+          <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-xs text-muted-foreground hover:bg-muted/50">
+            <Upload className="size-5" />
+            Add
+            <input
+              type="file"
+              multiple
+              accept={MEDIA_ACCEPT}
+              className="sr-only"
+              onChange={(e) => {
+                void pick(Array.from(e.target.files ?? []))
+                e.target.value = ''
+              }}
+            />
+          </label>
+        ) : null}
+      </div>
+      <div className="flex gap-2">
+        <Input value={link} placeholder="…or paste a link (https://…)" onChange={(e) => setLink(e.target.value)} />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!/^https?:\/\//.test(link.trim()) || value.length >= MAX_MEDIA}
+          onClick={() => {
+            onChange([...value, link.trim()])
+            setLink('')
+          }}
+        >
+          Add link
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 /** Upload an image or video from the computer, or paste a link. Shows a preview once set. */
@@ -138,7 +250,7 @@ function MediaField({ label, value, onChange }: { label: string; value: string; 
                 {uploading ? 'Uploading…' : value ? 'Replace' : 'Upload image or video'}
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm"
+                  accept={MEDIA_ACCEPT}
                   className="sr-only"
                   disabled={uploading}
                   onChange={(e) => {
@@ -188,6 +300,7 @@ export function ContentPage() {
         published: d.published,
         slug: kind === 'news' ? d.slug : '',
         image: d.image,
+        ...(kind === 'news' ? { media: d.media } : {}),
         sortOrder: d.sortOrder,
         en: d.en,
         ar: d.ar,
@@ -419,7 +532,9 @@ export function ContentPage() {
                     />
                   </div>
                 )}
-                {meta.image ? (
+                {kind === 'news' ? (
+                  <MediaList value={draft.media} onChange={(media) => setDraft((d) => (d ? { ...d, media } : d))} />
+                ) : meta.image ? (
                   <MediaField
                     label={meta.image}
                     value={draft.image}
