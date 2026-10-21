@@ -1,5 +1,5 @@
 
-import { NavLink, Outlet, Navigate, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   BookOpen,
@@ -41,9 +41,13 @@ const nav = [
   { to: '/reports', label: 'Reports', icon: ClipboardList },
   { to: '/kb', label: 'Knowledge', icon: BookOpen },
   { to: '/content', label: 'Website', icon: Globe },
-  { to: '/insights', label: 'Insights', icon: BarChart3 },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  // On phones these two live in the profile menu (top right) to keep the bottom bar short.
+  { to: '/insights', label: 'Insights', icon: BarChart3, inProfileMenu: true },
+  { to: '/settings', label: 'Settings', icon: Settings, inProfileMenu: true },
 ]
+
+const bottomNav = nav.filter((item) => !('inProfileMenu' in item))
+const profileMenuNav = nav.filter((item) => 'inProfileMenu' in item)
 
 function BrandBlock({ compact = false }: { compact?: boolean }) {
   return (
@@ -143,6 +147,7 @@ export function AppShell() {
   const { admin, token, logout } = useAuth()
   const { theme, setTheme } = useTheme()
   const location = useLocation()
+  const navigate = useNavigate()
   const keyboardOpen = useKeyboardOpen()
 
   // Inbox thread on mobile: hide bottom tabs so the reply box can sit at the bottom.
@@ -186,6 +191,15 @@ export function AppShell() {
                   <p className="text-xs leading-none text-muted-foreground">{admin?.email}</p>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                {profileMenuNav.map((item) => (
+                  <DropdownMenuItem key={item.to} onClick={() => navigate(item.to)}>
+                    <item.icon className="mr-2 size-4" />
+                    {item.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <PushNotificationsToggle asMenuItem />
@@ -237,7 +251,7 @@ export function AppShell() {
         )}
       >
         <div className="flex">
-          {nav.map((item) => (
+          {bottomNav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
