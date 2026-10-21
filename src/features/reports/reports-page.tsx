@@ -51,7 +51,7 @@ const FIELD_LABEL: Record<string, string> = { cv: 'CV', photo: 'Photo' }
 /** Ask the backend for a short-lived link and download the file (it's sent as an attachment). */
 async function downloadAttachment(file: ReportAttachment) {
   try {
-    const { url } = await api<{ url: string }>(`/uploads/private?key=${encodeURIComponent(file.key)}`)
+    const { url } = await api<{ url: string }>(`/uploads/private?key=${encodeURIComponent(file.key)}&name=${encodeURIComponent(file.name)}`)
     const a = document.createElement('a')
     a.href = url
     a.rel = 'noopener'
