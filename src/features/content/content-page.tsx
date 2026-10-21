@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
+const isVideo = (url: string) => /\.(mp4|webm)(\?|#|$)/i.test(url)
+
 type FieldDef = { key: keyof ContentText; label: string; multiline?: boolean; rows?: number }
 
 const KINDS: {
@@ -40,7 +42,7 @@ const KINDS: {
       { key: 'excerpt', label: 'Short summary', multiline: true, rows: 2 },
       { key: 'body', label: 'Article', multiline: true, rows: 8 },
     ],
-    image: 'Cover image',
+    image: 'Cover image or video',
   },
   {
     kind: 'testimonial',
@@ -52,7 +54,7 @@ const KINDS: {
       { key: 'name', label: 'Name' },
       { key: 'role', label: 'Role / organisation' },
     ],
-    image: 'Photo (optional)',
+    image: 'Photo or video (optional)',
   },
 ]
 
@@ -98,8 +100,8 @@ const headline = (kind: ContentKind, item: SiteContentItem) => {
   return item.en?.[key] || item.ar?.[key] || 'Untitled'
 }
 
-/** Upload an image from the computer, or paste a link. Shows a preview once set. */
-function ImageField({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
+/** Upload an image or video from the computer, or paste a link. Shows a preview once set. */
+function MediaField({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
   const [uploading, setUploading] = useState(false)
 
   const pick = async (file: File | undefined) => {
@@ -107,7 +109,7 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
     setUploading(true)
     try {
       onChange(await uploadFile(file))
-      toast.success('Image uploaded')
+      toast.success('Uploaded')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -119,7 +121,9 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
     <div className="space-y-1.5 sm:col-span-2">
       <Label htmlFor="content-image">{label}</Label>
       <div className="flex items-start gap-3">
-        {value ? (
+        {value && isVideo(value) ? (
+          <video src={value} muted playsInline preload="metadata" className="size-20 shrink-0 rounded-lg border bg-muted object-cover" />
+        ) : value ? (
           <img src={value} alt="" className="size-20 shrink-0 rounded-lg border bg-muted object-cover" />
         ) : (
           <div className="flex size-20 shrink-0 items-center justify-center rounded-lg border border-dashed text-muted-foreground">
@@ -131,10 +135,10 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
             <Button type="button" variant="outline" size="sm" disabled={uploading} asChild>
               <label className="cursor-pointer">
                 {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                {uploading ? 'Uploading…' : value ? 'Replace image' : 'Upload image'}
+                {uploading ? 'Uploading…' : value ? 'Replace' : 'Upload image or video'}
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm"
                   className="sr-only"
                   disabled={uploading}
                   onChange={(e) => {
@@ -154,7 +158,7 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
           <Input
             id="content-image"
             value={value}
-            placeholder="…or paste an image link (https://…)"
+            placeholder="…or paste a link (https://…)"
             onChange={(e) => onChange(e.target.value)}
           />
         </div>
@@ -416,7 +420,7 @@ export function ContentPage() {
                   </div>
                 )}
                 {meta.image ? (
-                  <ImageField
+                  <MediaField
                     label={meta.image}
                     value={draft.image}
                     onChange={(image) => setDraft((d) => (d ? { ...d, image } : d))}
