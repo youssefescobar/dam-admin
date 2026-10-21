@@ -107,7 +107,7 @@ const MAX_MEDIA = 12
 
 function Thumb({ url }: { url: string }) {
   return isVideo(url) ? (
-    <video src={url} muted playsInline preload="metadata" className="size-full object-cover" />
+    <video src={`${url}#t=0.1`} muted playsInline preload="metadata" className="size-full object-cover" />
   ) : (
     <img src={url} alt="" className="size-full object-cover" />
   )
@@ -234,7 +234,7 @@ function MediaField({ label, value, onChange }: { label: string; value: string; 
       <Label htmlFor="content-image">{label}</Label>
       <div className="flex items-start gap-3">
         {value && isVideo(value) ? (
-          <video src={value} muted playsInline preload="metadata" className="size-20 shrink-0 rounded-lg border bg-muted object-cover" />
+          <video src={`${value}#t=0.1`} muted playsInline preload="metadata" className="size-20 shrink-0 rounded-lg border bg-muted object-cover" />
         ) : value ? (
           <img src={value} alt="" className="size-20 shrink-0 rounded-lg border bg-muted object-cover" />
         ) : (
