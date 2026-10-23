@@ -1,6 +1,6 @@
 # Browser smoke test
 
-Logs in, claims a waiting chat and replies, saves settings, and checks the error and expired-login paths.
+Logs in, claims a waiting chat and replies, saves settings, deletes a quote, and checks the error and expired-login paths.
 
 Needs dam-backend running with a database and a staff account:
 
@@ -13,4 +13,4 @@ npm start
 E2E_ADMIN_EMAIL=e2e@example.com E2E_ADMIN_PASSWORD=e2e-password npm run test:e2e
 ```
 
-`VITE_API_BASE_URL` (from `.env`) must point at that backend. Use a test database: the test creates a chat and re-saves settings.
+`VITE_API_BASE_URL` (from `.env`) must point at that backend. Use a test database: the test creates a chat and a quote, and re-saves settings.

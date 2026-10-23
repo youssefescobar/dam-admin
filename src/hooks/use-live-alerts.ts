@@ -143,7 +143,11 @@ export function useLiveAlerts(enabled: boolean) {
       })
     }
 
+    // Another staff member deleted a quote: drop it from every open list.
+    const onQuoteDeleted = () => void queryClient.invalidateQueries({ queryKey: ['quotes'] })
+
     socket.on('quote:new', onQuote)
+    socket.on('quote:deleted', onQuoteDeleted)
     socket.on('quote:reminder', onQuoteReminder)
     socket.on('report:new', onReport)
     socket.on('conversation:escalated', onEscalated)
@@ -151,6 +155,7 @@ export function useLiveAlerts(enabled: boolean) {
 
     return () => {
       socket.off('quote:new', onQuote)
+      socket.off('quote:deleted', onQuoteDeleted)
       socket.off('quote:reminder', onQuoteReminder)
       socket.off('report:new', onReport)
       socket.off('conversation:escalated', onEscalated)

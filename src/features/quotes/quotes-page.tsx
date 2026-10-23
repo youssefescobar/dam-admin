@@ -48,6 +48,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ChevronDown, MoreHorizontal, Inbox, LayoutGrid, List } from 'lucide-react'
 import { QuotesTableSkeleton } from '@/components/loading/skeletons'
 import { QueryError } from '@/components/ui/query-error'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { StatusChip } from '@/components/ui/status-chip'
 import { CUSTOMER_TYPES, DEPARTMENTS, QUOTE_STATUS_LABEL } from '@/lib/labels'
 import { cn, formatSar } from '@/lib/utils'
@@ -84,6 +85,7 @@ export function QuotesPage() {
   const [detail, setDetail] = useState<Quote | null>(null)
   const [priceDraft, setPriceDraft] = useState('')
   const [notesDraft, setNotesDraft] = useState('')
+  const [toDelete, setToDelete] = useState<Quote | null>(null)
   const [view, setViewState] = useState<View>(loadView)
 
   const setView = (next: View) => {
@@ -137,6 +139,16 @@ export function QuotesPage() {
       toast.success('Quote saved')
       // Refresh the open dialog only; board moves must not pop it open.
       setDetail((d) => (d && d._id === data.quote._id ? data.quote : d))
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api<void>(`/quotes/${id}`, { method: 'DELETE' }),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] })
+      toast.success('Quote deleted')
+      setDetail((d) => (d && d._id === id ? null : d))
     },
     onError: (err: Error) => toast.error(err.message),
   })
@@ -287,6 +299,9 @@ export function QuotesPage() {
                   <Link to={`/inbox?c=${row.original.conversationId}`}>Open related chat</Link>
                 </DropdownMenuItem>
               ) : null}
+              <DropdownMenuItem className="text-destructive" onClick={() => setToDelete(row.original)}>
+                Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ),
@@ -825,6 +840,17 @@ export function QuotesPage() {
                 </Button>
               </div>
             )}
+            {detail && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => setToDelete(detail)}
+              >
+                Delete
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -836,6 +862,15 @@ export function QuotesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(toDelete)}
+        title={`Delete ${toDelete?.leadId || 'this quote'}?`}
+        description={`${toDelete?.customerName ?? ''}'s request will be removed for good. This can't be undone.`}
+        confirmLabel="Delete quote"
+        onConfirm={() => toDelete && deleteMutation.mutate(toDelete._id)}
+        onCancel={() => setToDelete(null)}
+      />
     </div>
   )
 }
