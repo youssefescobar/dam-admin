@@ -66,3 +66,33 @@ test('an expired login goes back to the login page', async ({ page }) => {
   await page.goto('/quotes')
   await expect(page).toHaveURL(/\/login$/)
 })
+
+test('a quote can be deleted after confirming', async ({ page }) => {
+  const name = `E2E delete ${Date.now()}`
+  const res = await fetch(`${API}/quotes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      customerName: name,
+      customerContact: `+9665${String(Date.now()).slice(-8)}`,
+      pickup: 'Makkah',
+      dropoff: 'Madinah',
+      date: '2026-12-01',
+      passengers: 2,
+    }),
+  })
+  expect(res.ok).toBe(true)
+  await login(page)
+
+  const row = page.getByRole('row').filter({ hasText: name })
+  await row.getByRole('button', { name: 'Actions' }).click()
+  await page.getByRole('menuitem', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(row).toBeVisible()
+
+  await row.getByRole('button', { name: 'Actions' }).click()
+  await page.getByRole('menuitem', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Delete quote' }).click()
+  await expect(page.getByText('Quote deleted')).toBeVisible()
+  await expect(row).toHaveCount(0)
+})
