@@ -1,68 +1,48 @@
 # DAMAC — Durrah Al Munawwara Admin Console
 
-React admin console for Durrah Al Munawwara (sibling of `dam-backend`). Brand: **DAMAC**.
+Staff console for Durrah Al Munawwara: quotes, live chat inbox, reports, Durra AI knowledge base, website content, insights and company settings. Talks to `dam-backend` over HTTP and Socket.io.
 
-Stack: Vite + React + TypeScript + Tailwind + shadcn/ui + TanStack Query/Table + assistant-ui + Socket.io client.
+Stack: Vite + React + TypeScript, Tailwind + shadcn/ui (Radix), TanStack Query/Table, socket.io-client, vite-plugin-pwa.
 
 ## Setup
 
 ```bash
-# from DAMT/
-cd dam-admin
-cp .env.example .env
+cp .env.example .env   # VITE_API_BASE_URL=http://127.0.0.1:3000
 npm install
+npm run dev            # http://127.0.0.1:5173 (dam-backend must be running)
 ```
 
-`.env`:
+`VITE_API_BASE_URL` is the backend's address and is baked in at build time. The backend's `CORS_ORIGIN` must allow this app's origin.
 
-```
-VITE_API_BASE_URL=http://127.0.0.1:3000
-```
+Staff accounts are created on the server with `npm run seed:admin` in `dam-backend` (set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`). Everyone can then change their own password from the profile menu; that signs out their other devices.
 
-## Dev (two terminals)
-
-```bash
-# terminal 1 — API
-cd dam-backend
-npm start
-
-# terminal 2 — admin SPA
-cd dam-admin
-npm run dev
-```
-
-Open **http://127.0.0.1:5173**
-
-Default seed admin (after `npm run seed:admin` in backend): `admin@damic.local` / `changeme123`
-
-CORS: backend `.env` can use `CORS_ORIGIN=*` or `http://127.0.0.1:5173`.
-
-## Screens
+## Pages
 
 | Route | Purpose |
 |-------|---------|
-| `/login` | JWT login |
-| `/quotes` | Quotes table + detail dialog (price, notes, won/lost) |
-| `/inbox` | Escalation queue + claim / close + assistant-ui thread |
-| `/kb` | Knowledge base CRUD + CSV import (embeds on save) |
-| `/ai` | AI playground — assistant-ui + `POST /chat/message` |
+| `/login` | Sign in |
+| `/quotes` | Quote requests as a table or a board; price, notes, department, won/lost |
+| `/inbox` | Chats waiting for a person: claim, reply, close (`?c=<id>` opens one) |
+| `/reports` | Complaints and job applications from Durra AI, with attached files |
+| `/kb` | Knowledge base Durra AI answers from; CSV import adds and updates, never deletes |
+| `/content` | Website news and testimonials, with photo/video uploads |
+| `/insights` | Handover and miss rates, unanswered questions |
+| `/settings` | Company details, SLAs, office hours and bot greetings |
 
-## PWA & phone notifications
-
-`dam-admin` is installable (manifest + service worker via `vite-plugin-pwa`).
-
-1. Backend `.env` must have VAPID keys (`npx web-push generate-vapid-keys` in `dam-backend`).
-2. Log in → sidebar **Enable notifications** (allows browser permission + `POST /push/subscribe`).
-3. New quotes and chat escalations wake subscribed admin devices (Web Push — **not** Firebase).
-4. Production must be **HTTPS**. On iOS, Add to Home Screen first (Safari 16.4+).
-
-## Production build
+## Checks
 
 ```bash
-npm run build
-# static files in dist/ — host on HTTPS for install + push
+npm run lint    # oxlint, 0 warnings expected
+npm run build   # type-check + production build
+npm run test:e2e  # browser smoke test; needs dam-backend + MongoDB, see e2e/README.md
 ```
 
-## Backend relationship
+Pull requests run lint and build in GitHub Actions.
 
-This React app is the admin UI. The portable customer chat widget stays at `dam-backend/public/widget/` for the main website.
+## Phone alerts (PWA)
+
+The app is installable and sends Web Push alerts (new quotes, chats waiting, reminders). The backend needs VAPID keys (`npx web-push generate-vapid-keys` in `dam-backend`). Turn alerts on from the sidebar or the profile menu; signing out turns them off for that device. Production must be HTTPS; on iPhone, add the app to the Home Screen first (iOS 16.4+).
+
+## Deploy
+
+Pushing to `master` builds with the production `VITE_API_BASE_URL` (set in `.github/workflows/deploy.yml`) and copies `dist/` to the droplet at `/var/www/dam-admin/`. An open tab offers a reload when a new version is live.

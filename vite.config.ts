@@ -17,7 +17,7 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectRegister: false,
-      includeAssets: ['favicon.ico', 'favicon-32.png', 'damac.png', 'image.png', 'damac.jpg', 'apple-touch-icon.png', 'icons/*.png', 'icons/*.ico'],
+      includeAssets: ['favicon.ico', 'favicon-32.png', 'logo.png', 'apple-touch-icon.png', 'icons/*.png'],
       manifest: {
         name: 'DAMAC - Durrah Al Munawwara Admin Console',
         short_name: 'DAMAC',
@@ -68,33 +68,5 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: (() => {
-      // SPA routes (/quotes, /kb, …) share paths with the API. On refresh the
-      // browser navigates with Accept: text/html — serve index.html instead of
-      // proxying, or the backend returns {"error":"Authentication required"}.
-      const apiTarget = 'http://127.0.0.1:3000'
-      const spaBypass = (req: { headers: { accept?: string } }) => {
-        if (req.headers.accept?.includes('text/html')) {
-          return '/index.html'
-        }
-      }
-      const apiProxy = {
-        target: apiTarget,
-        bypass: spaBypass,
-      }
-      return {
-        '/auth': apiProxy,
-        '/quotes': apiProxy,
-        '/kb': apiProxy,
-        '/chat': apiProxy,
-        '/push': apiProxy,
-        '/conversations': apiProxy,
-        '/health': apiProxy,
-        '/socket.io': {
-          target: apiTarget,
-          ws: true,
-        },
-      }
-    })(),
   },
 })

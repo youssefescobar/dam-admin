@@ -23,22 +23,26 @@ function isStandalone(): boolean {
   )
 }
 
+function wasDismissed(): boolean {
+  try {
+    return localStorage.getItem(DISMISS_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** iOS has no install prompt event, so its "Add to Home Screen" hint shows straight away. */
+const showIosHint = () => isIos() && !isStandalone() && !wasDismissed()
+
 export function PwaInstallBanner({ className }: { className?: string }) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
-  const [iosHint, setIosHint] = useState(false)
-  const [visible, setVisible] = useState(false)
+  const [iosHint] = useState(showIosHint)
+  const [visible, setVisible] = useState(showIosHint)
   // Track whether the native prompt fired so the fallback timer doesn't race.
   const promptFiredRef = useRef(false)
 
   useEffect(() => {
-    if (isStandalone()) return
-    if (localStorage.getItem(DISMISS_KEY) === '1') return
-
-    if (isIos()) {
-      setIosHint(true)
-      setVisible(true)
-      return
-    }
+    if (isStandalone() || wasDismissed() || isIos()) return
 
     const onPrompt = (e: Event) => {
       e.preventDefault()
@@ -59,7 +63,7 @@ export function PwaInstallBanner({ className }: { className?: string }) {
     // Fallback: only show the "how to install" hint if the native prompt never fired.
     const timer = window.setTimeout(() => {
       if (isStandalone()) return
-      if (localStorage.getItem(DISMISS_KEY) === '1') return
+      if (wasDismissed()) return
       if (promptFiredRef.current) return
       setVisible(true)
     }, 2500)

@@ -1,4 +1,4 @@
-
+import { Suspense, useState } from 'react'
 import { NavLink, Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Globe,
   Inbox,
+  KeyRound,
   LogOut,
   Moon,
   Settings,
@@ -32,6 +33,8 @@ import { Separator } from '@/components/ui/separator'
 import { PushNotificationsToggle } from '@/components/layout/push-notifications-toggle'
 import { PwaInstallBanner } from '@/components/layout/pwa-install-banner'
 import { useLiveAlerts } from '@/hooks/use-live-alerts'
+import { ErrorBoundary } from '@/components/layout/error-boundary'
+import { ChangePasswordDialog } from '@/components/layout/change-password-dialog'
 import { useKeyboardOpen } from '@/hooks/use-keyboard-open'
 import { cn } from '@/lib/utils'
 
@@ -53,7 +56,7 @@ function BrandBlock({ compact = false }: { compact?: boolean }) {
   return (
     <div className={cn('flex min-w-0 items-center gap-3', compact && 'gap-2')}>
       <img
-        src="/image.png"
+        src="/logo.png"
         alt="DAMAC"
         className={cn(
           'shrink-0 rounded-md object-contain object-center',
@@ -74,6 +77,14 @@ function BrandBlock({ compact = false }: { compact?: boolean }) {
   )
 }
 
+function PageLoading() {
+  return (
+    <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground" aria-busy="true">
+      Loading…
+    </div>
+  )
+}
+
 function NavBadge({ count }: { count: number }) {
   if (!count) return null
   return (
@@ -84,11 +95,11 @@ function NavBadge({ count }: { count: number }) {
 }
 
 function SidebarNav({
-  onNavigate,
   inboxCount,
+  onChangePassword,
 }: {
-  onNavigate?: () => void
   inboxCount: number
+  onChangePassword: () => void
 }) {
   const { admin, logout } = useAuth()
   const { theme, setTheme } = useTheme()
@@ -100,7 +111,6 @@ function SidebarNav({
           <NavLink
             key={item.to}
             to={item.to}
-            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
                 'flex min-h-11 items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
@@ -122,6 +132,10 @@ function SidebarNav({
         <div className="truncate px-2 text-xs font-medium">{admin?.name || 'Admin'}</div>
         <div className="truncate px-2 text-[11px] text-muted-foreground">{admin?.email}</div>
         <PushNotificationsToggle />
+        <Button variant="ghost" size="sm" className="w-full justify-start gap-2" type="button" onClick={onChangePassword}>
+          <KeyRound className="size-4" />
+          Change password
+        </Button>
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -133,7 +147,7 @@ function SidebarNav({
           >
             {theme === 'dark' ? <Sun /> : <Moon />}
           </Button>
-          <Button variant="outline" className="h-11 flex-1 md:h-9" type="button" onClick={logout}>
+          <Button variant="outline" className="h-11 flex-1 md:h-9" type="button" onClick={() => void logout()}>
             <LogOut />
             Sign out
           </Button>
@@ -149,6 +163,7 @@ export function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
   const keyboardOpen = useKeyboardOpen()
+  const [passwordOpen, setPasswordOpen] = useState(false)
 
   // Inbox thread on mobile: hide bottom tabs so the reply box can sit at the bottom.
   const inboxThreadOpen =
@@ -203,13 +218,17 @@ export function AppShell() {
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <PushNotificationsToggle asMenuItem />
+                <DropdownMenuItem onClick={() => setPasswordOpen(true)}>
+                  <KeyRound className="mr-2 size-4" />
+                  Change password
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
                   {theme === 'dark' ? <Sun className="mr-2 size-4" /> : <Moon className="mr-2 size-4" />}
                   {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
+              <DropdownMenuItem onClick={() => void logout()} className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
                 <LogOut className="mr-2 size-4" />
                 Sign out
               </DropdownMenuItem>
@@ -226,7 +245,7 @@ export function AppShell() {
             <BrandBlock />
           </div>
           <Separator />
-          <SidebarNav inboxCount={inboxCount} />
+          <SidebarNav inboxCount={inboxCount} onChangePassword={() => setPasswordOpen(true)} />
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -239,10 +258,17 @@ export function AppShell() {
                 : 'pb-[calc(3.75rem+env(safe-area-inset-bottom))]'
             )}
           >
-            <Outlet />
+            {/* Keyed by page so a crash on one page clears when you open another. */}
+            <ErrorBoundary key={location.pathname}>
+              <Suspense fallback={<PageLoading />}>
+                <Outlet />
+              </Suspense>
+            </ErrorBoundary>
           </main>
         </div>
       </div>
+
+      <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
 
       <nav
         className={cn(

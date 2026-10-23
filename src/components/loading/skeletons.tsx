@@ -2,17 +2,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TableCell, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 
-/** Soft fade when real content replaces a skeleton. */
-export function FadeIn({
-  className,
-  children,
-}: {
-  className?: string
-  children: React.ReactNode
-}) {
-  return <div className={cn('animate-fade-in', className)}>{children}</div>
-}
-
 export function QuotesTableSkeleton({
   columns,
   rows = 8,

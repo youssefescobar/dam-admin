@@ -13,7 +13,6 @@ import { api } from '@/lib/api'
 import type { Quote } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PhoneInputField } from '@/components/ui/phone-input'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import {
   Select,
@@ -48,11 +47,15 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ChevronDown, MoreHorizontal, Inbox, LayoutGrid, List } from 'lucide-react'
 import { QuotesTableSkeleton } from '@/components/loading/skeletons'
-import { StatusChip, QUOTE_STATUS_LABEL } from '@/components/ui/status-chip'
+import { QueryError } from '@/components/ui/query-error'
+import { StatusChip } from '@/components/ui/status-chip'
+import { CUSTOMER_TYPES, DEPARTMENTS, QUOTE_STATUS_LABEL } from '@/lib/labels'
 import { cn, formatSar } from '@/lib/utils'
 import { QuotesBoard, ReminderBadge } from './quotes-board'
 
 type View = 'table' | 'board'
+/** The server returns at most this many quotes, newest first. */
+const QUOTES_LIMIT = 1000
 const VIEW_KEY = 'dam-quotes-view'
 
 const loadView = (): View => {
@@ -62,6 +65,9 @@ const loadView = (): View => {
     return 'table'
   }
 }
+
+/** Saudi numbers typed any way (0501…, 966501…, +966 50 1…) compare as the same digits. */
+const localDigits = (phone: string) => phone.replace(/\D/g, '').replace(/^(00)?966|^0+/, '')
 
 const legCountLabel = (q: Quote) =>
   q.legs && q.legs.length > 1 ? `${q.legs.length} legs` : ''
@@ -138,7 +144,7 @@ export function QuotesPage() {
   const filtered = useMemo(() => {
     let rows = query.data?.quotes ?? []
     const contact = contactFilter.trim().toLowerCase()
-    const phone = phoneFilter.replace(/\D/g, '')
+    const phone = localDigits(phoneFilter)
     if (contact) {
       rows = rows.filter(
         (q) =>
@@ -147,7 +153,7 @@ export function QuotesPage() {
       )
     }
     if (phone) {
-      rows = rows.filter((q) => q.customerContact.replace(/\D/g, '').includes(phone))
+      rows = rows.filter((q) => localDigits(q.customerContact).includes(phone))
     }
     if (dateRange?.from) {
       const from = dateRange.from.getTime()
@@ -278,7 +284,7 @@ export function QuotesPage() {
               </DropdownMenuItem>
               {row.original.conversationId ? (
                 <DropdownMenuItem asChild>
-                  <Link to="/inbox">Open related chat</Link>
+                  <Link to={`/inbox?c=${row.original.conversationId}`}>Open related chat</Link>
                 </DropdownMenuItem>
               ) : null}
             </DropdownMenuContent>
@@ -308,6 +314,7 @@ export function QuotesPage() {
           {!query.isLoading && (
             <p className="text-xs text-muted-foreground">
               {filtered.length} shown
+              {(query.data?.quotes.length ?? 0) >= QUOTES_LIMIT ? ` (latest ${QUOTES_LIMIT} only)` : ''}
               {status !== 'all' ? ` · ${QUOTE_STATUS_LABEL[status] || status}` : ''}
             </p>
           )}
@@ -376,13 +383,11 @@ export function QuotesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="group">Group</SelectItem>
-              <SelectItem value="corporate">Corporate</SelectItem>
-              <SelectItem value="company">Company</SelectItem>
-              <SelectItem value="government">Government</SelectItem>
-              <SelectItem value="school">School</SelectItem>
-              <SelectItem value="hajj_mission">Hajj mission</SelectItem>
-              <SelectItem value="tourism">Tourism</SelectItem>
+              {CUSTOMER_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  {t.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -394,11 +399,11 @@ export function QuotesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="sales">Sales</SelectItem>
-              <SelectItem value="hajj">Hajj</SelectItem>
-              <SelectItem value="corporate">Corporate</SelectItem>
-              <SelectItem value="operations">Operations</SelectItem>
-              <SelectItem value="support">Support</SelectItem>
+              {DEPARTMENTS.map((d) => (
+                <SelectItem key={d.value} value={d.value}>
+                  {d.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -416,11 +421,13 @@ export function QuotesPage() {
         </div>
         <div className="col-span-2 min-w-0 space-y-1 md:col-span-1">
           <div className="text-xs text-muted-foreground">Phone</div>
-          <PhoneInputField
+          <Input
             className="w-full"
+            type="tel"
+            inputMode="tel"
             value={phoneFilter}
-            onChange={setPhoneFilter}
-            placeholder="Filter by phone"
+            onChange={(e) => setPhoneFilter(e.target.value)}
+            placeholder="05… or +966…"
           />
         </div>
         <div className="col-span-2 min-w-0 space-y-1 md:col-span-1">
@@ -444,7 +451,11 @@ export function QuotesPage() {
         </Button>
       </div>
 
-      {view === 'board' ? (
+      {query.isError ? (
+        <QueryError className="rounded-xl border" error={query.error} onRetry={() => void query.refetch()} />
+      ) : null}
+
+      {view === 'board' && !query.isError ? (
         <QuotesBoard
           quotes={filtered}
           loading={query.isLoading}
@@ -457,7 +468,7 @@ export function QuotesPage() {
       <div
         className={cn(
           'space-y-2 md:hidden',
-          view === 'board' && 'hidden',
+          (view === 'board' || query.isError) && 'hidden',
           query.isFetching && !query.isLoading && 'opacity-60'
         )}
       >
@@ -520,7 +531,7 @@ export function QuotesPage() {
       <div
         className={cn(
           'hidden overflow-x-auto rounded-xl border bg-card transition-opacity duration-200',
-          view === 'table' && 'md:block',
+          view === 'table' && !query.isError && 'md:block',
           query.isFetching && !query.isLoading && 'opacity-60'
         )}
       >
@@ -723,11 +734,11 @@ export function QuotesPage() {
                       <SelectValue placeholder="Assign" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sales">Sales</SelectItem>
-                      <SelectItem value="hajj">Hajj</SelectItem>
-                      <SelectItem value="corporate">Corporate</SelectItem>
-                      <SelectItem value="operations">Operations</SelectItem>
-                      <SelectItem value="support">Support</SelectItem>
+                      {DEPARTMENTS.map((d) => (
+                        <SelectItem key={d.value} value={d.value}>
+                          {d.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -790,7 +801,7 @@ export function QuotesPage() {
               </div>
               {detail.conversationId ? (
                 <Button asChild variant="outline" type="button">
-                  <Link to="/inbox">Open inbox (related chat)</Link>
+                  <Link to={`/inbox?c=${detail.conversationId}`}>Open related chat</Link>
                 </Button>
               ) : null}
             </div>

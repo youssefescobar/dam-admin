@@ -49,4 +49,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={{ theme, setTheme }}>{children}</Ctx.Provider>
 }
 
+// The hook lives beside its provider on purpose; fast refresh just reloads this file.
+// oxlint-disable-next-line react/only-export-components
 export const useTheme = () => useContext(Ctx)

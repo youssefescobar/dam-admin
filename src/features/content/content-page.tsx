@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { QueryError } from '@/components/ui/query-error'
 
 const isVideo = (url: string) => /\.(mp4|webm)(\?|#|$)/i.test(url)
 
@@ -114,23 +115,34 @@ function Thumb({ url }: { url: string }) {
 }
 
 /** News: several images/videos. The first is the cover; the rest show under the article. */
-function MediaList({ value, onChange }: { value: string[]; onChange: (urls: string[]) => void }) {
+function MediaList({
+  value,
+  onChange,
+  onAdd,
+  onUploading,
+}: {
+  value: string[]
+  onChange: (urls: string[]) => void
+  /** Appends to the latest list, so removing or reordering during an upload sticks. */
+  onAdd: (url: string) => void
+  onUploading: (delta: number) => void
+}) {
   const [uploading, setUploading] = useState(0)
   const [link, setLink] = useState('')
 
   const pick = async (files: File[]) => {
-    const room = MAX_MEDIA - value.length
+    const room = MAX_MEDIA - value.length - uploading
     if (files.length > room) toast.error(`Up to ${MAX_MEDIA} files per post`)
-    let urls = value
     for (const file of files.slice(0, Math.max(room, 0))) {
       setUploading((n) => n + 1)
+      onUploading(1)
       try {
-        urls = [...urls, await uploadFile(file)]
-        onChange(urls)
+        onAdd(await uploadFile(file))
       } catch (err) {
         toast.error(`${file.name}: ${err instanceof Error ? err.message : 'Upload failed'}`)
       } finally {
         setUploading((n) => n - 1)
+        onUploading(-1)
       }
     }
   }
@@ -201,7 +213,7 @@ function MediaList({ value, onChange }: { value: string[]; onChange: (urls: stri
           variant="outline"
           disabled={!/^https?:\/\//.test(link.trim()) || value.length >= MAX_MEDIA}
           onClick={() => {
-            onChange([...value, link.trim()])
+            onAdd(link.trim())
             setLink('')
           }}
         >
@@ -213,12 +225,23 @@ function MediaList({ value, onChange }: { value: string[]; onChange: (urls: stri
 }
 
 /** Upload an image or video from the computer, or paste a link. Shows a preview once set. */
-function MediaField({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
+function MediaField({
+  label,
+  value,
+  onChange,
+  onUploading,
+}: {
+  label: string
+  value: string
+  onChange: (url: string) => void
+  onUploading: (delta: number) => void
+}) {
   const [uploading, setUploading] = useState(false)
 
   const pick = async (file: File | undefined) => {
     if (!file) return
     setUploading(true)
+    onUploading(1)
     try {
       onChange(await uploadFile(file))
       toast.success('Uploaded')
@@ -226,6 +249,7 @@ function MediaField({ label, value, onChange }: { label: string; value: string; 
       toast.error(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setUploading(false)
+      onUploading(-1)
     }
   }
 
@@ -285,6 +309,9 @@ export function ContentPage() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [deleting, setDeleting] = useState<SiteContentItem | null>(null)
+  // Files still uploading in the open editor; saving now would drop them.
+  const [uploads, setUploads] = useState(0)
+  const onUploading = (delta: number) => setUploads((n) => n + delta)
   const meta = KINDS.find((k) => k.kind === kind)!
 
   const query = useQuery({
@@ -396,7 +423,8 @@ export function ContentPage() {
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="m-3 h-12 animate-pulse rounded-lg" />
           ))}
-        {!query.isLoading && !items.length && (
+        {query.isError && <QueryError error={query.error} onRetry={() => void query.refetch()} />}
+        {query.isSuccess && !items.length && (
           <div className="flex flex-col items-center gap-2 px-4 py-12 text-center text-muted-foreground">
             <Globe className="size-8 opacity-50" />
             <p className="text-sm font-medium text-foreground">Nothing yet</p>
@@ -533,12 +561,18 @@ export function ContentPage() {
                   </div>
                 )}
                 {kind === 'news' ? (
-                  <MediaList value={draft.media} onChange={(media) => setDraft((d) => (d ? { ...d, media } : d))} />
+                  <MediaList
+                    value={draft.media}
+                    onChange={(media) => setDraft((d) => (d ? { ...d, media } : d))}
+                    onAdd={(url) => setDraft((d) => (d ? { ...d, media: [...d.media, url] } : d))}
+                    onUploading={onUploading}
+                  />
                 ) : meta.image ? (
                   <MediaField
                     label={meta.image}
                     value={draft.image}
                     onChange={(image) => setDraft((d) => (d ? { ...d, image } : d))}
+                    onUploading={onUploading}
                   />
                 ) : null}
               </div>
@@ -556,8 +590,8 @@ export function ContentPage() {
             <Button type="button" variant="outline" onClick={() => setDraft(null)}>
               Cancel
             </Button>
-            <Button type="button" disabled={save.isPending} onClick={() => draft && save.mutate(draft)}>
-              {draft?.published ? 'Save and publish' : 'Save draft'}
+            <Button type="button" disabled={save.isPending || uploads > 0} onClick={() => draft && save.mutate(draft)}>
+              {uploads > 0 ? 'Uploading…' : draft?.published ? 'Save and publish' : 'Save draft'}
             </Button>
           </DialogFooter>
         </DialogContent>

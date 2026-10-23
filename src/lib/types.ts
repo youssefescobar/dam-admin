@@ -82,6 +82,8 @@ export type ChatMessage = {
   sender: 'customer' | 'ai' | 'admin' | 'system'
   text: string
   createdAt: string
+  /** A file the customer sent in a chat form (CV, photo); `text` holds its name. */
+  attachment?: { key: string; name?: string; contentType?: string } | null
 }
 
 export type KbEntry = {

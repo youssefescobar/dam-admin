@@ -11,7 +11,7 @@ import {
 } from '@/lib/push'
 import { cn } from '@/lib/utils'
 
-export function PushNotificationsToggle({ compact = false, asMenuItem = false }: { compact?: boolean, asMenuItem?: boolean }) {
+export function PushNotificationsToggle({ asMenuItem = false }: { asMenuItem?: boolean }) {
   const [status, setStatus] = useState<PushStatus>('default')
   const [busy, setBusy] = useState(false)
 
@@ -20,8 +20,8 @@ export function PushNotificationsToggle({ compact = false, asMenuItem = false }:
   }, [])
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    void getPushStatus().then(setStatus)
+  }, [])
 
   const onToggle = async () => {
     setBusy(true)
@@ -86,7 +86,7 @@ export function PushNotificationsToggle({ compact = false, asMenuItem = false }:
 
   return (
     <div className="space-y-1.5">
-      {!on && !compact && (
+      {!on && (
         <p className="px-1 text-[11px] leading-snug text-muted-foreground">
           Turn on alerts so you don’t miss new quotes or waiting chats.
         </p>

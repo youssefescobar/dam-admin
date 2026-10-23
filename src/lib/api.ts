@@ -18,6 +18,12 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
   auth?: boolean
 }
 
+/** Fired when the server rejects our login token; AuthProvider signs out and the shell goes to /login. */
+export const SESSION_EXPIRED_EVENT = 'damac:session-expired'
+
+/** A request that hangs longer than this fails, so buttons never stay disabled forever. */
+const REQUEST_TIMEOUT_MS = 20_000
+
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers)
   if (options.body !== undefined) {
@@ -28,11 +34,18 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     if (token) headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      signal: options.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+  } catch (err) {
+    const timedOut = err instanceof DOMException && err.name === 'TimeoutError'
+    throw new ApiError(0, timedOut ? 'The server took too long to answer. Try again.' : 'Can’t reach the server. Check your connection and try again.')
+  }
 
   if (res.status === 204) {
     return undefined as T
@@ -43,6 +56,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   if (!res.ok) {
     if (res.status === 401 && options.auth !== false) {
       clearSession()
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
     }
     throw new ApiError(res.status, data.error || res.statusText, data.fields)
   }
@@ -84,6 +98,16 @@ export async function uploadFile(original: File): Promise<string> {
   const res = await fetch(uploadUrl, { method: 'PUT', headers, body: file })
   if (!res.ok) throw new ApiError(res.status, 'Upload failed, please try again')
   return url
+}
+
+/** Download a customer's private file (CV, photo) through a short-lived link; it's sent as an attachment. */
+export async function downloadPrivateFile(file: { key: string; name?: string }) {
+  const qs = new URLSearchParams({ key: file.key, name: file.name || '' })
+  const { url } = await api<{ url: string }>(`/uploads/private?${qs}`)
+  const a = document.createElement('a')
+  a.href = url
+  a.rel = 'noopener'
+  a.click()
 }
 
 export function apiBaseUrl() {

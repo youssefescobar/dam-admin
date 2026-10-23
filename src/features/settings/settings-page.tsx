@@ -5,7 +5,11 @@ import type { CompanySettings } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { QueryError } from '@/components/ui/query-error'
+
+/** Whole hours/days as typed (0 stays 0, so the server can reject it rather than us quietly saving 24). */
+const wholeNumber = (value: number, fallback: number) => (Number.isFinite(value) ? Math.round(value) : fallback)
 
 const empty: CompanySettings = {
   legalNameAr: '',
@@ -33,27 +37,38 @@ const empty: CompanySettings = {
   officeEnd: '17:00',
 }
 
-export function SettingsPage() {
-  const queryClient = useQueryClient()
-  const [form, setForm] = useState<CompanySettings>(empty)
+const toForm = (settings: CompanySettings): CompanySettings => ({
+  ...empty,
+  ...settings,
+  phones: settings.phones ?? [],
+})
 
+export function SettingsPage() {
   const query = useQuery({
     queryKey: ['settings'],
     queryFn: () => api<{ settings: CompanySettings }>('/settings'),
   })
 
-  useEffect(() => {
-    if (query.data?.settings) {
-      setForm({ ...empty, ...query.data.settings, phones: query.data.settings.phones ?? [] })
-    }
-  }, [query.data])
+  if (query.isLoading) {
+    return <p className="p-4 text-sm text-muted-foreground md:p-6">Loading settings…</p>
+  }
+  if (!query.data) {
+    // No form without the saved settings: saving an empty form would wipe what the bot uses.
+    return <QueryError error={query.error} onRetry={() => void query.refetch()} />
+  }
+  return <SettingsForm saved={query.data.settings} />
+}
+
+function SettingsForm({ saved }: { saved: CompanySettings }) {
+  const queryClient = useQueryClient()
+  const [form, setForm] = useState(() => toForm(saved))
 
   const saveMutation = useMutation({
     mutationFn: (body: Partial<CompanySettings>) =>
       api<{ settings: CompanySettings }>('/settings', { method: 'PATCH', body }),
     onSuccess: (data) => {
       toast.success('Settings saved')
-      setForm({ ...empty, ...data.settings, phones: data.settings.phones ?? [] })
+      setForm(toForm(data.settings))
       queryClient.invalidateQueries({ queryKey: ['settings'] })
     },
     onError: (err: Error) => toast.error(err.message),
@@ -78,9 +93,9 @@ export function SettingsPage() {
       baggagePolicy: form.baggagePolicy,
       cancellationPolicy: form.cancellationPolicy,
       childFareNote: form.childFareNote,
-      quoteSlaHours: Number(form.quoteSlaHours) || 24,
-      quoteFollowUpDays: Math.max(0, Number(form.quoteFollowUpDays) || 0),
-      complaintSlaHours: Number(form.complaintSlaHours) || 48,
+      quoteSlaHours: wholeNumber(form.quoteSlaHours, saved.quoteSlaHours),
+      quoteFollowUpDays: wholeNumber(form.quoteFollowUpDays, saved.quoteFollowUpDays),
+      complaintSlaHours: wholeNumber(form.complaintSlaHours, saved.complaintSlaHours),
       botGreetingEn: form.botGreetingEn,
       botGreetingAr: form.botGreetingAr,
       officeHoursEnabled: form.officeHoursEnabled,
@@ -89,10 +104,6 @@ export function SettingsPage() {
       officeStart: form.officeStart,
       officeEnd: form.officeEnd,
     })
-  }
-
-  if (query.isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading settings…</p>
   }
 
   return (

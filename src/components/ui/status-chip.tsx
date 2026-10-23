@@ -1,30 +1,5 @@
 import { cn } from '@/lib/utils'
-
-export const QUOTE_STATUS_LABEL: Record<string, string> = {
-  new: 'New',
-  quoted: 'Quoted',
-  won: 'Won',
-  lost: 'Lost',
-}
-
-export const CONVERSATION_STATUS_LABEL: Record<string, string> = {
-  needs_human: 'Needs you',
-  mine: 'Mine',
-  claimed: 'Claimed',
-  ai_handling: 'With Durra AI',
-  closed: 'Closed',
-}
-
-export const REPORT_STATUS_LABEL: Record<string, string> = {
-  new: 'New',
-  in_progress: 'In progress',
-  resolved: 'Resolved',
-}
-
-export const REPORT_TYPE_LABEL: Record<string, string> = {
-  complaint: 'Complaint',
-  career: 'Job application',
-}
+import { CONVERSATION_STATUS_LABEL, QUOTE_STATUS_LABEL, REPORT_STATUS_LABEL } from '@/lib/labels'
 
 const QUOTE_STATUS_CLASS: Record<string, string> = {
   new: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200',

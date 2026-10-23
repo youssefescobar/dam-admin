@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { StickyNote } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Quote } from '@/lib/types'
-import { QUOTE_STATUS_LABEL } from '@/components/ui/status-chip'
+import { QUOTE_STATUS_LABEL } from '@/lib/labels'
 import {
   DropdownMenu,
   DropdownMenuContent,
