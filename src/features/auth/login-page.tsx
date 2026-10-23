@@ -44,7 +44,7 @@ export function LoginPage() {
         <Card className="w-full max-w-md border-border/80 shadow-sm">
           <CardHeader className="items-center text-center">
             <img
-              src="/image.png"
+              src="/logo.png"
               alt="DAMAC"
               className="mb-2 mt-1 size-20 rounded-xl object-contain object-center p-2"
             />

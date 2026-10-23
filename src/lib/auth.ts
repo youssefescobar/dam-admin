@@ -31,7 +31,3 @@ export function clearSession() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(ADMIN_KEY)
 }
-
-export function isAuthenticated() {
-  return Boolean(getToken())
-}

@@ -1,4 +1,4 @@
-import { api, apiBaseUrl } from '@/lib/api'
+import { api } from '@/lib/api'
 
 export type PushStatus =
   | 'unsupported'
@@ -25,10 +25,21 @@ export function isPushSupported(): boolean {
   )
 }
 
+/** `serviceWorker.ready` never settles if registration failed; give up after 5 s instead of hanging. */
+function serviceWorkerReady(): Promise<ServiceWorkerRegistration> {
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Alerts aren’t available right now. Reload the app and try again.')), 5000)
+    ),
+  ])
+}
+
 export async function getPushStatus(): Promise<PushStatus> {
   if (!isPushSupported()) return 'unsupported'
   if (Notification.permission === 'denied') return 'denied'
-  const reg = await navigator.serviceWorker.ready
+  const reg = await serviceWorkerReady().catch(() => null)
+  if (!reg) return 'unsupported'
   const sub = await reg.pushManager.getSubscription()
   if (sub) return 'subscribed'
   return Notification.permission === 'granted' ? 'unsubscribed' : 'default'
@@ -68,7 +79,7 @@ export async function enablePushNotifications(): Promise<PushSubscription> {
     throw new Error('Server has no VAPID public key configured')
   }
 
-  const reg = await navigator.serviceWorker.ready
+  const reg = await serviceWorkerReady()
   let sub = await reg.pushManager.getSubscription()
   if (!sub) {
     sub = await reg.pushManager.subscribe({
@@ -98,8 +109,9 @@ export async function enablePushNotifications(): Promise<PushSubscription> {
 
 export async function disablePushNotifications(): Promise<void> {
   if (!isPushSupported()) return
-  const reg = await navigator.serviceWorker.ready
-  const sub = await reg.pushManager.getSubscription()
+  // getRegistration answers at once (unlike `ready`), so signing out never waits on a missing worker.
+  const reg = await navigator.serviceWorker.getRegistration()
+  const sub = await reg?.pushManager.getSubscription()
   if (!sub) return
 
   try {
@@ -112,9 +124,4 @@ export async function disablePushNotifications(): Promise<void> {
   }
 
   await sub.unsubscribe()
-}
-
-/** Absolute API base for diagnostics only */
-export function pushDebugInfo() {
-  return { apiBase: apiBaseUrl(), supported: isPushSupported() }
 }

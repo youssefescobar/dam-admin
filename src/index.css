@@ -120,15 +120,9 @@
   input,
   textarea,
   select,
-  [contenteditable='true'],
-  .PhoneInputInput,
-  .PhoneInput input {
+  [contenteditable='true'] {
     font-size: 16px !important;
     line-height: 1.4;
-  }
-
-  .PhoneInput {
-    font-size: 16px;
   }
 }
 

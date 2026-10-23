@@ -1,59 +1,78 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  AssistantRuntimeProvider,
-  ThreadPrimitive,
-  ComposerPrimitive,
-  MessagePrimitive,
-  useExternalStoreRuntime,
-  useAuiState,
-  type ThreadMessageLike,
-} from '@assistant-ui/react'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router-dom'
-import { api } from '@/lib/api'
-import { connectAdminSocket, joinAdminConversation } from '@/lib/socket'
+import { api, downloadPrivateFile } from '@/lib/api'
+import { connectAdminSocket, emitWithAck, joinAdminConversation } from '@/lib/socket'
 import { useAuth } from '@/features/auth/auth-context'
 import type { ChatMessage, Conversation } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ListPanelSkeleton, ThreadSkeleton } from '@/components/loading/skeletons'
-import { StatusChip, CONVERSATION_STATUS_LABEL } from '@/components/ui/status-chip'
+import { QueryError } from '@/components/ui/query-error'
+import { StatusChip } from '@/components/ui/status-chip'
+import { CONVERSATION_STATUS_LABEL } from '@/lib/labels'
 import { SwipeToDelete } from '@/components/ui/swipe-to-delete'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { ArrowLeft, MessageCircle } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Paperclip } from 'lucide-react'
 
-const SENDER_LABEL: Record<string, string> = {
+const SENDER_LABEL: Record<ChatMessage['sender'], string> = {
   customer: 'Customer',
   ai: 'Durra AI',
   admin: 'Agent',
   system: 'System',
 }
 
-/** Small "who said this" caption above a bubble. */
-function SenderLabel() {
-  const sender = useAuiState((s) => s.message.metadata?.custom?.sender as string | undefined)
-  return (
-    <div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide opacity-70">
-      {SENDER_LABEL[sender ?? ''] ?? ''}
-    </div>
-  )
+/** The server returns at most this many chats per filter. */
+const LIST_LIMIT = 100
+
+type Thread = { conversation: Conversation; messages: ChatMessage[] }
+
+/** Add a message to the cached thread unless it's already there (the ack and the room broadcast both deliver it). */
+function appendMessage(thread: Thread | undefined, message: ChatMessage): Thread | undefined {
+  if (!thread || thread.messages.some((m) => m._id === message._id)) return thread
+  return { ...thread, messages: [...thread.messages, message] }
 }
 
-function toThreadMessages(messages: ChatMessage[]): ThreadMessageLike[] {
-  return messages
-    .filter((m) => m.sender === 'customer' || m.sender === 'ai' || m.sender === 'admin' || m.sender === 'system')
-    .map((m) => {
-      const role =
-        m.sender === 'customer' ? 'user' : m.sender === 'system' ? 'system' : 'assistant'
-      return {
-        role,
-        content: [{ type: 'text', text: m.text }],
-        id: m._id,
-        createdAt: new Date(m.createdAt),
-        metadata: { custom: { sender: m.sender } },
-      } satisfies ThreadMessageLike
-    })
+function MessageBubble({ message }: { message: ChatMessage }) {
+  const { sender } = message
+  const file = message.attachment
+  return (
+    <div
+      className={cn(
+        'flex',
+        sender === 'customer' ? 'justify-end' : sender === 'system' ? 'justify-center' : 'justify-start'
+      )}
+    >
+      <div
+        className={cn(
+          'whitespace-pre-wrap break-words text-sm',
+          sender === 'customer' && 'max-w-[80%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-primary-foreground',
+          (sender === 'ai' || sender === 'admin') && 'max-w-[80%] rounded-2xl rounded-bl-md border bg-card px-3 py-2',
+          sender === 'system' && 'max-w-[90%] rounded-lg bg-muted px-3 py-1.5 text-center text-xs text-muted-foreground'
+        )}
+        dir="auto"
+      >
+        <div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide opacity-70">{SENDER_LABEL[sender]}</div>
+        {file?.key ? (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 underline underline-offset-2"
+            onClick={() =>
+              downloadPrivateFile({ key: file.key, name: file.name || message.text }).catch((err: Error) =>
+                toast.error(err.message)
+              )
+            }
+          >
+            <Paperclip className="size-3.5 shrink-0" />
+            {file.name || message.text}
+          </button>
+        ) : (
+          message.text
+        )}
+      </div>
+    </div>
+  )
 }
 
 function ConversationThread({
@@ -64,45 +83,35 @@ function ConversationThread({
   canReply: boolean
 }) {
   const queryClient = useQueryClient()
-  const { admin } = useAuth()
+  const queryKey = ['messages', conversationId]
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   const messagesQuery = useQuery({
-    queryKey: ['messages', conversationId],
-    queryFn: () =>
-      api<{ conversation: Conversation; messages: ChatMessage[] }>(
-        `/conversations/${conversationId}/messages`
-      ),
+    queryKey,
+    queryFn: () => api<Thread>(`/conversations/${conversationId}/messages`),
   })
-
-  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([])
-
-  useEffect(() => {
-    if (messagesQuery.data?.messages) {
-      setLocalMessages(messagesQuery.data.messages)
-    }
-  }, [messagesQuery.data])
+  const messages = messagesQuery.data?.messages
 
   useEffect(() => {
     const socket = connectAdminSocket()
     const onNew = (payload: {
-      sender?: string
+      sender?: ChatMessage['sender']
       text?: string
       conversationId?: string
       messageId?: string
     }) => {
       // The socket stays in every room this agent opened; only this thread's messages belong here.
       if (payload.conversationId !== conversationId || !payload.text) return
-      const id = payload.messageId || `live-${Date.now()}`
-      setLocalMessages((prev) => prev.some((m) => m._id === id) ? prev : [
-        ...prev,
-        {
-          _id: id,
-          conversationId,
-          sender: (payload.sender as ChatMessage['sender']) || 'system',
-          text: payload.text!,
-          createdAt: new Date().toISOString(),
-        },
-      ])
+      const message: ChatMessage = {
+        _id: payload.messageId || `live-${Date.now()}`,
+        conversationId,
+        sender: payload.sender || 'system',
+        text: payload.text,
+        createdAt: new Date().toISOString(),
+      }
+      queryClient.setQueryData<Thread>(['messages', conversationId], (t) => appendMessage(t, message))
     }
     // After a reconnect, refetch to catch messages sent while the socket was down.
     const onConnect = () => queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
@@ -115,117 +124,73 @@ function ConversationThread({
     }
   }, [conversationId, queryClient])
 
-  const sendAdmin = useCallback(
-    async (text: string) => {
-      const socket = connectAdminSocket()
-      await new Promise<void>((resolve, reject) => {
-        socket.emit(
-          'admin:message',
-          { conversationId, adminId: admin?.id, text },
-          (ack: { ok?: boolean; error?: string; message?: ChatMessage }) => {
-            if (!ack?.ok) {
-              reject(new Error(ack?.error || 'Send failed'))
-              return
-            }
-            const sent = ack.message
-            if (sent) {
-              // The room broadcast of the same message may have arrived first.
-              setLocalMessages((prev) => prev.some((m) => m._id === sent._id) ? prev : [...prev, sent])
-            }
-            resolve()
-          }
-        )
-      })
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
-    },
-    [admin?.id, conversationId, queryClient]
-  )
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: 'end' })
+  }, [messages?.length])
 
-  const threadMessages = useMemo(() => toThreadMessages(localMessages), [localMessages])
+  const send = async () => {
+    const text = draft.trim()
+    if (!text || sending) return
+    setSending(true)
+    try {
+      const { message } = await emitWithAck<{ ok?: boolean; error?: string; message?: ChatMessage }>(
+        'admin:message',
+        { conversationId, text }
+      )
+      if (message) queryClient.setQueryData<Thread>(['messages', conversationId], (t) => appendMessage(t, message))
+      setDraft('')
+    } catch (err) {
+      // Keep the text in the box so the agent can press Send again.
+      toast.error(`Not sent: ${(err as Error).message}`)
+    } finally {
+      setSending(false)
+    }
+  }
 
-  const runtime = useExternalStoreRuntime({
-    messages: threadMessages,
-    convertMessage: (message) => message,
-    isRunning: false,
-    onNew: async (message) => {
-      if (!canReply) {
-        toast.error('Claim this chat first to reply')
-        throw new Error('Not claimed')
-      }
-      const text = message.content
-        .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-        .map((p) => p.text)
-        .join('\n')
-        .trim()
-      if (!text) return
-      await sendAdmin(text)
-    },
-  })
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault()
+      void send()
+    }
+  }
 
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
-      <div className="flex h-full min-h-0 flex-col">
-        <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col">
-          <ThreadPrimitive.Viewport className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-            {messagesQuery.isLoading && <ThreadSkeleton />}
-            {!messagesQuery.isLoading && (
-              <div className="animate-fade-in flex flex-1 flex-col gap-3">
-                <ThreadPrimitive.Messages
-                  components={{
-                    UserMessage: () => (
-                      <MessagePrimitive.Root className="flex justify-end">
-                        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground">
-                          <SenderLabel />
-                          <MessagePrimitive.Content />
-                        </div>
-                      </MessagePrimitive.Root>
-                    ),
-                    AssistantMessage: () => (
-                      <MessagePrimitive.Root className="flex justify-start">
-                        <div className="max-w-[80%] rounded-2xl rounded-bl-md border bg-card px-3 py-2 text-sm">
-                          <SenderLabel />
-                          <MessagePrimitive.Content />
-                        </div>
-                      </MessagePrimitive.Root>
-                    ),
-                    SystemMessage: () => (
-                      <MessagePrimitive.Root className="flex justify-center">
-                        <div className="max-w-[90%] rounded-lg bg-muted px-3 py-1.5 text-center text-xs text-muted-foreground">
-                          <SenderLabel />
-                          <MessagePrimitive.Content />
-                        </div>
-                      </MessagePrimitive.Root>
-                    ),
-                  }}
-                />
-              </div>
-            )}
-          </ThreadPrimitive.Viewport>
-          <div className="shrink-0 border-t bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            {canReply ? (
-              <ComposerPrimitive.Root className="flex items-end gap-2">
-                <ComposerPrimitive.Input
-                  placeholder="Reply as admin…"
-                  rows={1}
-                  className="max-h-32 min-h-11 flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <ComposerPrimitive.Send asChild>
-                  <Button type="button" className="h-11 shrink-0 md:h-9">
-                    Send
-                  </Button>
-                </ComposerPrimitive.Send>
-              </ComposerPrimitive.Root>
-            ) : (
-              <div className="flex flex-col items-center gap-2 py-1 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Claim this chat to reply as a team member.
-                </p>
-              </div>
-            )}
-          </div>
-        </ThreadPrimitive.Root>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        {messagesQuery.isLoading ? <ThreadSkeleton /> : null}
+        {messagesQuery.isError ? (
+          <QueryError error={messagesQuery.error} onRetry={() => void messagesQuery.refetch()} />
+        ) : null}
+        {messages?.map((m) => <MessageBubble key={m._id} message={m} />)}
+        <div ref={bottomRef} />
       </div>
-    </AssistantRuntimeProvider>
+      <div className="shrink-0 border-t bg-background p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        {canReply ? (
+          <form
+            className="flex items-end gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void send()
+            }}
+          >
+            <textarea
+              aria-label="Reply"
+              placeholder="Reply as admin…"
+              rows={1}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onKeyDown}
+              className="field-sizing-content max-h-32 min-h-11 flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2.5 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <Button type="submit" className="h-11 shrink-0 md:h-9" disabled={sending || !draft.trim()}>
+              {sending ? 'Sending…' : 'Send'}
+            </Button>
+          </form>
+        ) : (
+          <p className="py-1 text-center text-sm text-muted-foreground">Claim this chat to reply as a team member.</p>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -233,8 +198,8 @@ export function InboxPage() {
   const { admin } = useAuth()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
-  const deepLinkId = searchParams.get('c')
-  const [selectedId, setSelectedId] = useState<string | null>(deepLinkId)
+  // The open chat lives in the URL (?c=), so alerts and other pages can link straight to it.
+  const selectedId = searchParams.get('c')
   const [statusFilter, setStatusFilter] = useState('needs_human')
   // Stores the conversation ID pending deletion; null = dialog closed.
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null)
@@ -250,19 +215,6 @@ export function InboxPage() {
     // Safety net if the socket is silently down; react-query pauses this in hidden tabs.
     refetchInterval: 20_000,
   })
-
-  useEffect(() => {
-    if (!deepLinkId) return
-    setSelectedId(deepLinkId)
-  }, [deepLinkId])
-
-  useEffect(() => {
-    if (!deepLinkId || !listQuery.data) return
-    const found = listQuery.data.conversations.some((c) => c._id === deepLinkId)
-    if (found) return
-    // Deep-linked chat may be in another filter — still select it via messages fetch
-    setSelectedId(deepLinkId)
-  }, [deepLinkId, listQuery.data])
 
   useEffect(() => {
     const socket = connectAdminSocket()
@@ -288,19 +240,10 @@ export function InboxPage() {
   }, [queryClient])
 
   const claimMutation = useMutation({
-    mutationFn: async (conversationId: string) => {
-      const socket = connectAdminSocket()
-      return new Promise<void>((resolve, reject) => {
-        socket.emit('admin:claim', { conversationId }, (ack: { ok?: boolean; error?: string }) => {
-          if (!ack?.ok) reject(new Error(ack?.error || 'Claim failed'))
-          else resolve()
-        })
-      })
-    },
+    mutationFn: (conversationId: string) => emitWithAck('admin:claim', { conversationId }),
     onSuccess: (_, conversationId) => {
       toast.success('You’re on this chat')
       setStatusFilter('mine')
-      setSelectedId(conversationId)
       setSearchParams({ c: conversationId }, { replace: true })
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
@@ -331,7 +274,6 @@ export function InboxPage() {
     onSuccess: (_, conversationId) => {
       toast.message('Chat deleted')
       if (selectedId === conversationId) {
-        setSelectedId(null)
         setSearchParams({}, { replace: true })
       }
       queryClient.invalidateQueries({ queryKey: ['conversations'] })
@@ -343,10 +285,7 @@ export function InboxPage() {
   // A deep-linked chat may sit under another filter; fall back to the thread's own fetch.
   const threadQuery = useQuery({
     queryKey: ['messages', selectedId],
-    queryFn: () =>
-      api<{ conversation: Conversation; messages: ChatMessage[] }>(
-        `/conversations/${selectedId}/messages`
-      ),
+    queryFn: () => api<Thread>(`/conversations/${selectedId}/messages`),
     enabled: Boolean(selectedId),
   })
   const selected =
@@ -359,7 +298,6 @@ export function InboxPage() {
   const filters = ['needs_human', 'mine', 'claimed', 'ai_handling', 'closed'] as const
 
   const selectConversation = (id: string) => {
-    setSelectedId(id)
     setSearchParams({ c: id }, { replace: true })
   }
 
@@ -396,7 +334,10 @@ export function InboxPage() {
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
           <div className="space-y-1.5 p-2 pb-4">
             {listQuery.isLoading && <ListPanelSkeleton rows={6} />}
-            {!listQuery.isLoading &&
+            {listQuery.isError && (
+              <QueryError error={listQuery.error} onRetry={() => void listQuery.refetch()} />
+            )}
+            {listQuery.isSuccess &&
               (listQuery.data?.conversations ?? []).map((c) => (
                 <SwipeToDelete
                   key={c._id}
@@ -445,7 +386,12 @@ export function InboxPage() {
                   </button>
                 </SwipeToDelete>
               ))}
-            {!listQuery.isLoading && !(listQuery.data?.conversations.length) && (
+            {listQuery.isSuccess && listQuery.data.conversations.length >= LIST_LIMIT && (
+              <p className="px-2 pt-2 text-center text-[11px] text-muted-foreground">
+                Showing the latest {LIST_LIMIT}. Older chats in this filter aren’t listed.
+              </p>
+            )}
+            {listQuery.isSuccess && !listQuery.data.conversations.length && (
               <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-muted-foreground">
                 <MessageCircle className="size-8 opacity-50" />
                 <p className="text-sm font-medium text-foreground">Nothing in this filter</p>
@@ -464,7 +410,7 @@ export function InboxPage() {
           selectedId ? 'flex' : 'hidden md:flex'
         )}
       >
-        {selectedId && (selected || deepLinkId === selectedId) ? (
+        {selectedId ? (
           <>
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-2 border-b px-3 py-2.5 sm:px-4">
               <div className="flex min-w-0 items-center gap-2">
@@ -475,8 +421,7 @@ export function InboxPage() {
                   className="shrink-0 md:hidden"
                   aria-label="Back to list"
                   onClick={() => {
-                    setSelectedId(null)
-                    setSearchParams({}, { replace: true })
+                                setSearchParams({}, { replace: true })
                   }}
                 >
                   <ArrowLeft className="size-4" />

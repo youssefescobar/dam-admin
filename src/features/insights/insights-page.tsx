@@ -8,9 +8,13 @@ import type { ChatAnalytics, UnansweredQuestion } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { QueryError } from '@/components/ui/query-error'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
-const isoDay = (d: Date) => d.toISOString().slice(0, 10)
+// Days are Saudi days (UTC+3 all year, no DST), not UTC, so "today" starts at midnight in Riyadh.
+const isoDay = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' })
+const dayStart = (day: string) => encodeURIComponent(`${day}T00:00:00+03:00`)
+const dayEnd = (day: string) => encodeURIComponent(`${day}T23:59:59.999+03:00`)
 const pct = (n: number) => `${Math.round(n * 1000) / 10}%`
 
 // Backend keys are raw snake_case; "null" = message typed without picking a menu topic.
@@ -44,8 +48,7 @@ export function InsightsPage() {
 
   const stats = useQuery({
     queryKey: ['insights', 'analytics', from, to],
-    // `to` is a day: include all of it.
-    queryFn: () => api<ChatAnalytics>(`/insights/analytics?from=${from}&to=${to}T23:59:59.999Z`),
+    queryFn: () => api<ChatAnalytics>(`/insights/analytics?from=${dayStart(from)}&to=${dayEnd(to)}`),
   })
   const unanswered = useQuery({
     queryKey: ['insights', 'unanswered'],
@@ -78,6 +81,9 @@ export function InsightsPage() {
         </div>
       </div>
 
+      {stats.isError ? (
+        <QueryError className="rounded-lg border" error={stats.error} onRetry={() => void stats.refetch()} />
+      ) : null}
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {(
           [
@@ -115,7 +121,13 @@ export function InsightsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.length === 0 ? (
+              {unanswered.isError ? (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <QueryError error={unanswered.error} onRetry={() => void unanswered.refetch()} />
+                  </TableCell>
+                </TableRow>
+              ) : items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                     {unanswered.isLoading ? 'Loading…' : 'Nothing unanswered.'}

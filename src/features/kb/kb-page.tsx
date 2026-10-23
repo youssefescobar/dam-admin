@@ -27,6 +27,7 @@ import {
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
+import { QueryError } from '@/components/ui/query-error'
 import { DetailPanelSkeleton, ListPanelSkeleton } from '@/components/loading/skeletons'
 
 
@@ -67,40 +68,40 @@ export function KbPage() {
   const [editor, setEditor] = useState<EditorState>(emptyEditor)
   const [importOpen, setImportOpen] = useState(false)
   const [importMode, setImportMode] = useState<'upsert' | 'append'>('upsert')
-  const [replaceAll, setReplaceAll] = useState(false)
   const [csvText, setCsvText] = useState('')
   // Stores the KB entry pending deletion; null = dialog closed.
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null)
 
+  // The KB is a few hundred rows: load it once and filter here, so the category list and the
+  // "missing translation" check always see every entry.
   const listQuery = useQuery({
-    queryKey: ['kb', localeFilter, categoryFilter],
-    queryFn: () => {
-      const qs = new URLSearchParams()
-      if (localeFilter !== 'all') qs.set('locale', localeFilter)
-      if (categoryFilter !== 'all') qs.set('category', categoryFilter)
-      const q = qs.toString()
-      return api<{ entries: KbEntry[] }>(`/kb${q ? `?${q}` : ''}`)
-    },
+    queryKey: ['kb'],
+    queryFn: () => api<{ entries: KbEntry[] }>('/kb'),
   })
+  const all = listQuery.data?.entries
 
-  const entries = listQuery.data?.entries ?? []
+  const categories = useMemo(
+    () => [...new Set((all ?? []).map((e) => e.category).filter(Boolean) as string[])].sort(),
+    [all]
+  )
 
   // Entries sharing a sourceId are EN/AR twins; flag the ones missing a counterpart.
-  const allQuery = useQuery({ queryKey: ['kb', 'all'], queryFn: () => api<{ entries: KbEntry[] }>('/kb') })
+  const twins = useMemo(() => new Set((all ?? []).map((e) => `${e.sourceId}:${e.locale}`)), [all])
   const missingTwin = (e: KbEntry) => {
     if (!e.sourceId || (e.locale !== 'en' && e.locale !== 'ar')) return null
     const other = e.locale === 'en' ? 'ar' : 'en'
-    const all = allQuery.data?.entries
-    if (!all || all.some((x) => x.sourceId === e.sourceId && x.locale === other)) return null
-    return other === 'ar' ? 'Arabic' : 'English'
+    return twins.has(`${e.sourceId}:${other}`) ? null : other === 'ar' ? 'Arabic' : 'English'
   }
-  const categories = useMemo(() => {
-    const set = new Set<string>()
-    for (const e of entries) {
-      if (e.category) set.add(e.category)
-    }
-    return [...set].sort()
-  }, [entries])
+
+  const entries = useMemo(
+    () =>
+      (all ?? []).filter(
+        (e) =>
+          (localeFilter === 'all' || e.locale === localeFilter) &&
+          (categoryFilter === 'all' || e.category === categoryFilter)
+      ),
+    [all, localeFilter, categoryFilter]
+  )
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -166,7 +167,6 @@ export function KbPage() {
         body: {
           csv: csvText,
           mode: importMode,
-          replaceAll,
         },
       }),
     onSuccess: (data) => {
@@ -181,7 +181,6 @@ export function KbPage() {
       }
       setImportOpen(false)
       setCsvText('')
-      setReplaceAll(false)
       queryClient.invalidateQueries({ queryKey: ['kb'] })
     },
     onError: (err: Error) => toast.error(err.message),
@@ -272,7 +271,10 @@ export function KbPage() {
         <ScrollArea className="flex-1">
           <div className="space-y-1 p-2">
             {listQuery.isLoading && <ListPanelSkeleton rows={7} />}
-            {!listQuery.isLoading &&
+            {listQuery.isError && (
+              <QueryError error={listQuery.error} onRetry={() => void listQuery.refetch()} />
+            )}
+            {listQuery.isSuccess &&
               filtered.map((e) => (
                 <button
                   key={e._id}
@@ -312,7 +314,7 @@ export function KbPage() {
                   </div>
                 </button>
               ))}
-            {!listQuery.isLoading && !filtered.length && (
+            {listQuery.isSuccess && !filtered.length && (
               <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-muted-foreground">
                 <BookOpen className="size-8 opacity-50" />
                 <p className="text-sm font-medium text-foreground">
@@ -555,18 +557,14 @@ export function KbPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="upsert">Upsert by title</SelectItem>
+                  <SelectItem value="upsert">Update matching entries, add the rest</SelectItem>
                   <SelectItem value="append">Always create new</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <label className="flex cursor-pointer items-center gap-2.5 text-sm select-none">
-              <Checkbox
-                checked={replaceAll}
-                onCheckedChange={(checked) => setReplaceAll(Boolean(checked))}
-              />
-              Delete all existing entries first (replace all)
-            </label>
+            <p className="text-xs text-muted-foreground">
+              Import only adds and updates entries; it never deletes. Remove old ones from the list.
+            </p>
             <Textarea
               className="min-h-48 font-mono text-base"
               value={csvText}

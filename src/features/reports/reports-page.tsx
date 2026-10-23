@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ClipboardList, Download, MessageSquare } from 'lucide-react'
-import { api } from '@/lib/api'
+import { api, downloadPrivateFile } from '@/lib/api'
 import type { Report, ReportAttachment, ReportStatus } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,7 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { StatusChip, REPORT_TYPE_LABEL } from '@/components/ui/status-chip'
+import { StatusChip } from '@/components/ui/status-chip'
+import { REPORT_STATUS_LABEL, REPORT_TYPE_LABEL } from '@/lib/labels'
+import { QueryError } from '@/components/ui/query-error'
 
 const STATUSES: ReportStatus[] = ['new', 'in_progress', 'resolved']
 
@@ -48,14 +50,9 @@ function isOverdue(report: Report) {
 
 const FIELD_LABEL: Record<string, string> = { cv: 'CV', photo: 'Photo' }
 
-/** Ask the backend for a short-lived link and download the file (it's sent as an attachment). */
 async function downloadAttachment(file: ReportAttachment) {
   try {
-    const { url } = await api<{ url: string }>(`/uploads/private?key=${encodeURIComponent(file.key)}&name=${encodeURIComponent(file.name)}`)
-    const a = document.createElement('a')
-    a.href = url
-    a.rel = 'noopener'
-    a.click()
+    await downloadPrivateFile(file)
   } catch (err) {
     toast.error(err instanceof Error ? err.message : 'Could not open the file')
   }
@@ -125,7 +122,7 @@ export function ReportsPage() {
               <SelectItem value="all">All statuses</SelectItem>
               {STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s === 'in_progress' ? 'In progress' : s[0].toUpperCase() + s.slice(1)}
+                  {REPORT_STATUS_LABEL[s]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -150,6 +147,12 @@ export function ReportsPage() {
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   Loading…
+                </TableCell>
+              </TableRow>
+            ) : query.isError ? (
+              <TableRow>
+                <TableCell colSpan={6}>
+                  <QueryError error={query.error} onRetry={() => void query.refetch()} />
                 </TableCell>
               </TableRow>
             ) : reports.length === 0 ? (

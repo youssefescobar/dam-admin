@@ -41,4 +41,6 @@ function Button({
   return <Comp className={cn(buttonVariants({ variant, size, className }))} {...props} />
 }
 
+// shadcn keeps the variants beside the component; fast refresh just reloads this file.
+// oxlint-disable-next-line react/only-export-components
 export { Button, buttonVariants }
