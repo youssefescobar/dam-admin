@@ -55,7 +55,7 @@ export function useLiveAlerts(enabled: boolean) {
         description:
           (who ? who + ': ' : '') +
           (payload.kind === 'overdue'
-            ? 'still has no price past the reply SLA.'
+            ? 'still waiting for a reply past the SLA.'
             : 'no decision since it was quoted.'),
         action: {
           label: 'Open',

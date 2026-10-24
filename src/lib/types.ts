@@ -23,7 +23,6 @@ export type Quote = {
   /** Set by the backend once the follow-up reminder fired. */
   followUpRemindedAt?: string | null
   status: 'new' | 'quoted' | 'won' | 'lost'
-  quotedPrice: number | null
   conversationId?: string
   createdAt?: string
   language?: string

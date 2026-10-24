@@ -10,6 +10,9 @@ export function Toaster({ ...props }: ToasterProps) {
       position="top-center"
       richColors
       closeButton
+      // Collapsed stacks size every toast to the front one, so longer messages behind it get cut off.
+      expand
+      visibleToasts={4}
       offset={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
       mobileOffset={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
       toastOptions={{

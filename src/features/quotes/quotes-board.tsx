@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { StickyNote } from 'lucide-react'
-import { toast } from 'sonner'
 import type { Quote } from '@/lib/types'
 import { QUOTE_STATUS_LABEL } from '@/lib/labels'
 import {
@@ -9,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { cn, formatSar } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 type Status = Quote['status']
 
@@ -51,7 +50,7 @@ export function ReminderBadge({ quote }: { quote: Quote }) {
 type Props = {
   quotes: Quote[]
   loading?: boolean
-  /** Card click, or a drop onto "Quoted" without a price (staff must enter one first). */
+  /** Card click. */
   onOpen: (quote: Quote) => void
   onMove: (quote: Quote, status: Status) => void
 }
@@ -62,11 +61,6 @@ export function QuotesBoard({ quotes, loading, onOpen, onMove }: Props) {
 
   const move = (quote: Quote, status: Status) => {
     if (quote.status === status) return
-    if (status === 'quoted' && quote.quotedPrice == null) {
-      toast.info('Enter a price to mark it as quoted')
-      onOpen(quote)
-      return
-    }
     onMove(quote, status)
   }
 
@@ -74,7 +68,6 @@ export function QuotesBoard({ quotes, loading, onOpen, onMove }: Props) {
     <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:grid lg:grid-cols-4 lg:overflow-visible">
       {COLUMNS.map((status) => {
         const items = quotes.filter((q) => q.status === status)
-        const total = items.reduce((sum, q) => sum + (q.quotedPrice ?? 0), 0)
         return (
           <section
             key={status}
@@ -107,11 +100,6 @@ export function QuotesBoard({ quotes, loading, onOpen, onMove }: Props) {
                   {items.length}
                 </span>
               </div>
-              {total > 0 ? (
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {formatSar(total)}
-                </span>
-              ) : null}
             </header>
 
             <div className="flex min-h-32 flex-col gap-2 p-2">
@@ -195,9 +183,6 @@ function BoardCard({
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
         <span>{new Date(q.date).toLocaleDateString()}</span>
         <span>{q.passengers} pax</span>
-        {q.quotedPrice != null ? (
-          <span className="font-medium text-foreground">{formatSar(q.quotedPrice)}</span>
-        ) : null}
         <ReminderBadge quote={q} />
         {q.staffNotes ? (
           <StickyNote className="size-3.5" aria-label="Has staff notes" />

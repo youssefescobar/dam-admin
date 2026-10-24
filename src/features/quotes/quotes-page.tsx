@@ -51,7 +51,7 @@ import { QueryError } from '@/components/ui/query-error'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { StatusChip } from '@/components/ui/status-chip'
 import { CUSTOMER_TYPES, DEPARTMENTS, QUOTE_STATUS_LABEL } from '@/lib/labels'
-import { cn, formatSar } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { QuotesBoard, ReminderBadge } from './quotes-board'
 
 type View = 'table' | 'board'
@@ -83,7 +83,6 @@ export function QuotesPage() {
   const [phoneFilter, setPhoneFilter] = useState('')
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [detail, setDetail] = useState<Quote | null>(null)
-  const [priceDraft, setPriceDraft] = useState('')
   const [notesDraft, setNotesDraft] = useState('')
   const [toDelete, setToDelete] = useState<Quote | null>(null)
   const [view, setViewState] = useState<View>(loadView)
@@ -99,7 +98,6 @@ export function QuotesPage() {
 
   const openDetail = useCallback((q: Quote) => {
     setDetail(q)
-    setPriceDraft(q.quotedPrice != null ? String(q.quotedPrice) : '')
     setNotesDraft(q.staffNotes ?? '')
   }, [])
 
@@ -257,12 +255,6 @@ export function QuotesPage() {
         ),
       },
       {
-        accessorKey: 'quotedPrice',
-        header: 'Price',
-        cell: ({ row }) =>
-          row.original.quotedPrice != null ? formatSar(row.original.quotedPrice) : '—',
-      },
-      {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
@@ -279,6 +271,13 @@ export function QuotesPage() {
                 }}
               >
                 View details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  patchMutation.mutate({ id: row.original._id, body: { status: 'quoted' } })
+                }
+              >
+                Mark quoted
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
@@ -322,7 +321,7 @@ export function QuotesPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Quotes</h1>
           <p className="text-sm text-muted-foreground">
-            New transfer requests — review, price, and close the loop.
+            New transfer requests — review, follow up, and close the loop.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -525,9 +524,6 @@ export function QuotesPage() {
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                 <span>{new Date(q.date).toLocaleString()}</span>
                 <span>{q.vehicleType}</span>
-                <span>
-                  {q.quotedPrice != null ? formatSar(q.quotedPrice) : 'No price yet'}
-                </span>
               </div>
             </button>
           ))}
@@ -788,32 +784,6 @@ export function QuotesPage() {
                   </Button>
                 ) : null}
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="quote-price">Quoted price (SAR)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="quote-price"
-                    type="text"
-                    inputMode="decimal"
-                    min={0}
-                    step="0.01"
-                    value={priceDraft}
-                    onChange={(e) => setPriceDraft(e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    disabled={patchMutation.isPending || !Number(priceDraft)}
-                    onClick={() =>
-                      patchMutation.mutate({
-                        id: detail._id,
-                        body: { status: 'quoted', quotedPrice: Number(priceDraft) },
-                      })
-                    }
-                  >
-                    Set price
-                  </Button>
-                </div>
-              </div>
               {detail.conversationId ? (
                 <Button asChild variant="outline" type="button">
                   <Link to={`/inbox?c=${detail.conversationId}`}>Open related chat</Link>
@@ -823,7 +793,14 @@ export function QuotesPage() {
           )}
           <DialogFooter className="flex-col gap-2 sm:flex-row sm:items-center">
             {detail && (
-              <div className="grid grid-cols-2 gap-2 sm:contents">
+              <div className="grid grid-cols-3 gap-2 sm:contents">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => patchMutation.mutate({ id: detail._id, body: { status: 'quoted' } })}
+                >
+                  Mark quoted
+                </Button>
                 <Button
                   type="button"
                   variant="secondary"
