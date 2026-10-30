@@ -22,7 +22,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          VITE_API_BASE_URL: https://104-248-198-154.sslip.io
+          VITE_API_BASE_URL: https://142-93-135-187.sslip.io
       - name: Upload dist to droplet
         env:
           DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
