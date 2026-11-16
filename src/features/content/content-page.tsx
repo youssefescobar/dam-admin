@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff, Globe, ImageIcon, Loader2, Pencil, Plus, Trash2, Upload, X } from 'lucide-react'
+import { Eye, EyeOff, Globe, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { api, ApiError, uploadFile } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 import type { ContentKind, ContentText, SiteContentItem } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,10 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
+import { cn, slugify } from '@/lib/utils'
 import { QueryError } from '@/components/ui/query-error'
+import { MEDIA_ACCEPT, MediaField, MediaList } from '@/components/media/media-upload'
 
-const isVideo = (url: string) => /\.(mp4|webm)(\?|#|$)/i.test(url)
+/** News posts hold up to this many photos/videos. */
+const MAX_MEDIA = 12
 
 type FieldDef = { key: keyof ContentText; label: string; multiline?: boolean; rows?: number }
 
@@ -90,217 +92,10 @@ const toDraft = (item: SiteContentItem): Draft => ({
   ar: { ...item.ar },
 })
 
-const slugify = (text: string) =>
-  text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
-
 /** Headline for a list row: first filled field in English, then Arabic. */
 const headline = (kind: ContentKind, item: SiteContentItem) => {
   const key = kind === 'testimonial' ? 'quote' : 'title'
   return item.en?.[key] || item.ar?.[key] || 'Untitled'
-}
-
-const MEDIA_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm'
-const MAX_MEDIA = 12
-
-function Thumb({ url }: { url: string }) {
-  return isVideo(url) ? (
-    <video src={`${url}#t=0.1`} muted playsInline preload="metadata" className="size-full object-cover" />
-  ) : (
-    <img src={url} alt="" className="size-full object-cover" />
-  )
-}
-
-/** News: several images/videos. The first is the cover; the rest show under the article. */
-function MediaList({
-  value,
-  onChange,
-  onAdd,
-  onUploading,
-}: {
-  value: string[]
-  onChange: (urls: string[]) => void
-  /** Appends to the latest list, so removing or reordering during an upload sticks. */
-  onAdd: (url: string) => void
-  onUploading: (delta: number) => void
-}) {
-  const [uploading, setUploading] = useState(0)
-  const [link, setLink] = useState('')
-
-  const pick = async (files: File[]) => {
-    const room = MAX_MEDIA - value.length - uploading
-    if (files.length > room) toast.error(`Up to ${MAX_MEDIA} files per post`)
-    for (const file of files.slice(0, Math.max(room, 0))) {
-      setUploading((n) => n + 1)
-      onUploading(1)
-      try {
-        onAdd(await uploadFile(file))
-      } catch (err) {
-        toast.error(`${file.name}: ${err instanceof Error ? err.message : 'Upload failed'}`)
-      } finally {
-        setUploading((n) => n - 1)
-        onUploading(-1)
-      }
-    }
-  }
-
-  const move = (from: number, to: number) => {
-    const next = [...value]
-    next.splice(to, 0, ...next.splice(from, 1))
-    onChange(next)
-  }
-
-  return (
-    <div className="space-y-2 sm:col-span-2">
-      <Label>Photos and videos</Label>
-      <p className="text-xs text-muted-foreground">
-        The first one is the cover; the others show under the article. Photos are shrunk automatically. Videos up to 100 MB.
-      </p>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-        {value.map((url, i) => (
-          <div key={url + i} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
-            <Thumb url={url} />
-            {i === 0 ? (
-              <span className="absolute start-1 top-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-semibold">Cover</span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => move(i, 0)}
-                className="absolute start-1 top-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium"
-              >
-                Make cover
-              </button>
-            )}
-            <button
-              type="button"
-              aria-label="Remove"
-              onClick={() => onChange(value.filter((_, j) => j !== i))}
-              className="absolute end-1 top-1 rounded-full bg-background/90 p-1"
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        ))}
-        {Array.from({ length: uploading }).map((_, i) => (
-          <div key={`up-${i}`} className="flex aspect-square animate-pulse items-center justify-center rounded-lg border bg-muted">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
-        ))}
-        {value.length + uploading < MAX_MEDIA ? (
-          <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-xs text-muted-foreground hover:bg-muted/50">
-            <Upload className="size-5" />
-            Add
-            <input
-              type="file"
-              multiple
-              accept={MEDIA_ACCEPT}
-              className="sr-only"
-              onChange={(e) => {
-                void pick(Array.from(e.target.files ?? []))
-                e.target.value = ''
-              }}
-            />
-          </label>
-        ) : null}
-      </div>
-      <div className="flex gap-2">
-        <Input value={link} placeholder="…or paste a link (https://…)" onChange={(e) => setLink(e.target.value)} />
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!/^https?:\/\//.test(link.trim()) || value.length >= MAX_MEDIA}
-          onClick={() => {
-            onAdd(link.trim())
-            setLink('')
-          }}
-        >
-          Add link
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/** Upload an image or video from the computer, or paste a link. Shows a preview once set. */
-function MediaField({
-  label,
-  value,
-  onChange,
-  onUploading,
-}: {
-  label: string
-  value: string
-  onChange: (url: string) => void
-  onUploading: (delta: number) => void
-}) {
-  const [uploading, setUploading] = useState(false)
-
-  const pick = async (file: File | undefined) => {
-    if (!file) return
-    setUploading(true)
-    onUploading(1)
-    try {
-      onChange(await uploadFile(file))
-      toast.success('Uploaded')
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setUploading(false)
-      onUploading(-1)
-    }
-  }
-
-  return (
-    <div className="space-y-1.5 sm:col-span-2">
-      <Label htmlFor="content-image">{label}</Label>
-      <div className="flex items-start gap-3">
-        {value && isVideo(value) ? (
-          <video src={`${value}#t=0.1`} muted playsInline preload="metadata" className="size-20 shrink-0 rounded-lg border bg-muted object-cover" />
-        ) : value ? (
-          <img src={value} alt="" className="size-20 shrink-0 rounded-lg border bg-muted object-cover" />
-        ) : (
-          <div className="flex size-20 shrink-0 items-center justify-center rounded-lg border border-dashed text-muted-foreground">
-            <ImageIcon className="size-6 opacity-50" />
-          </div>
-        )}
-        <div className="grid min-w-0 flex-1 gap-2">
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={uploading} asChild>
-              <label className="cursor-pointer">
-                {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                {uploading ? 'Uploading…' : value ? 'Replace' : 'Upload image or video'}
-                <input
-                  type="file"
-                  accept={MEDIA_ACCEPT}
-                  className="sr-only"
-                  disabled={uploading}
-                  onChange={(e) => {
-                    void pick(e.target.files?.[0])
-                    e.target.value = ''
-                  }}
-                />
-              </label>
-            </Button>
-            {value ? (
-              <Button type="button" variant="ghost" size="sm" disabled={uploading} onClick={() => onChange('')}>
-                <X className="size-4" />
-                Remove
-              </Button>
-            ) : null}
-          </div>
-          <Input
-            id="content-image"
-            value={value}
-            placeholder="…or paste a link (https://…)"
-            onChange={(e) => onChange(e.target.value)}
-          />
-        </div>
-      </div>
-    </div>
-  )
 }
 
 export function ContentPage() {
@@ -561,19 +356,31 @@ export function ContentPage() {
                   </div>
                 )}
                 {kind === 'news' ? (
-                  <MediaList
-                    value={draft.media}
-                    onChange={(media) => setDraft((d) => (d ? { ...d, media } : d))}
-                    onAdd={(url) => setDraft((d) => (d ? { ...d, media: [...d.media, url] } : d))}
-                    onUploading={onUploading}
-                  />
+                  <div className="sm:col-span-2">
+                    <MediaList
+                      label="Photos and videos"
+                      hint="The first one is the cover; the others show under the article. Photos are shrunk automatically. Videos up to 100 MB."
+                      value={draft.media}
+                      onChange={(media) => setDraft((d) => (d ? { ...d, media } : d))}
+                      onAdd={(url) => setDraft((d) => (d ? { ...d, media: [...d.media, url] } : d))}
+                      onUploading={onUploading}
+                      max={MAX_MEDIA}
+                      accept={MEDIA_ACCEPT}
+                      firstIsCover
+                      allowLinks
+                    />
+                  </div>
                 ) : meta.image ? (
-                  <MediaField
-                    label={meta.image}
-                    value={draft.image}
-                    onChange={(image) => setDraft((d) => (d ? { ...d, image } : d))}
-                    onUploading={onUploading}
-                  />
+                  <div className="sm:col-span-2">
+                    <MediaField
+                      id="content-image"
+                      label={meta.image}
+                      value={draft.image}
+                      onChange={(image) => setDraft((d) => (d ? { ...d, image } : d))}
+                      onUploading={onUploading}
+                      accept={MEDIA_ACCEPT}
+                    />
+                  </div>
                 ) : null}
               </div>
 
