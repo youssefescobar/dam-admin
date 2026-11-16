@@ -14,6 +14,7 @@ const ReportsPage = lazy(() => import('@/features/reports/reports-page').then((m
 const KbPage = lazy(() => import('@/features/kb/kb-page').then((m) => ({ default: m.KbPage })))
 const InsightsPage = lazy(() => import('@/features/insights/insights-page').then((m) => ({ default: m.InsightsPage })))
 const ContentPage = lazy(() => import('@/features/content/content-page').then((m) => ({ default: m.ContentPage })))
+const FleetPage = lazy(() => import('@/features/fleet/fleet-page').then((m) => ({ default: m.FleetPage })))
 const SettingsPage = lazy(() => import('@/features/settings/settings-page').then((m) => ({ default: m.SettingsPage })))
 
 const queryClient = new QueryClient({
@@ -37,6 +38,7 @@ export default function App() {
                 <Route path="/kb" element={<KbPage />} />
                 <Route path="/insights" element={<InsightsPage />} />
                 <Route path="/content" element={<ContentPage />} />
+                <Route path="/fleet" element={<FleetPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/quotes" replace />} />

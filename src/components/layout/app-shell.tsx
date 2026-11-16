@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   BookOpen,
   BarChart3,
+  Bus,
   ClipboardList,
   Globe,
   Inbox,
@@ -44,7 +45,8 @@ const nav = [
   { to: '/reports', label: 'Reports', icon: ClipboardList },
   { to: '/kb', label: 'Knowledge', icon: BookOpen },
   { to: '/content', label: 'Website', icon: Globe },
-  // On phones these two live in the profile menu (top right) to keep the bottom bar short.
+  // On phones these live in the profile menu (top right) to keep the bottom bar short.
+  { to: '/fleet', label: 'Fleet', icon: Bus, inProfileMenu: true },
   { to: '/insights', label: 'Insights', icon: BarChart3, inProfileMenu: true },
   { to: '/settings', label: 'Settings', icon: Settings, inProfileMenu: true },
 ]

@@ -208,3 +208,31 @@ export type SiteContentItem = {
   createdAt?: string
   updatedAt?: string
 }
+
+export type QuoteClass = 'vip' | 'premium_vip' | 'standard' | 'coach' | 'city_large' | 'city' | 'employee'
+
+/** One language of a fleet bus. */
+export type FleetText = {
+  name: string
+  seatsLabel: string
+  summary: string
+  amenities: string[]
+}
+
+export type FleetBus = {
+  _id: string
+  slug: string
+  sortOrder: number
+  published: boolean
+  showInShowroom: boolean
+  quoteClass: QuoteClass
+  coverImage: string
+  exteriorImages: string[]
+  interiorImages: string[]
+  ar: FleetText
+  en: FleetText
+  fr: FleetText
+  id: FleetText
+  createdAt?: string
+  updatedAt?: string
+}
