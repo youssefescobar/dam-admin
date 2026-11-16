@@ -497,10 +497,10 @@ function ReviewStep({ draft, update, onEdit }: { draft: Draft; update: (patch: P
 function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b py-1.5">
-      <dt className="text-muted-foreground">{label}</dt>
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
       <dd className="flex min-w-0 items-baseline gap-2 text-end">
-        <span className="truncate">{value}</span>
-        <button type="button" onClick={onEdit} className="text-xs font-medium text-primary hover:underline">
+        <span className="truncate [overflow-wrap:normal]">{value}</span>
+        <button type="button" onClick={onEdit} className="shrink-0 text-xs font-medium text-primary hover:underline">
           Edit
         </button>
       </dd>
